@@ -1,22 +1,28 @@
 # a complete code for iris data from selection,cluster,clustering,to ensemble
 from sklearn import datasets
 from sklearn import cluster
-from sklearn.decomposition import PCA
 from sklearn.cross_validation import train_test_split
 
 import random as rand
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 
-# simply load the iris data
+
 def loadIris():
+    """
+    simply load the iris data
+    :return: tuple(data, target)
+    """
     print 'load Iris:'
     iris = datasets.load_iris()
-    return iris.data,iris.target
+    return iris.data, iris.target
 
-# load the common dataSet (labels in the last column)
+
 def loadDataSet():
+    """
+    load the common dataSet (labels in the last column)
+    :return:
+    """
     dataSet = []
     target = []
     fr = open('F:\\UCI Data\\wine\\wine.data.txt')
@@ -27,10 +33,16 @@ def loadDataSet():
         fltLine = map(float, curLine)
         dataSet.append(fltLine)
     print dataSet
-    return np.array(dataSet),np.array(target)
+    return np.array(dataSet), np.array(target)
 
-# repetition random sampling by features
+
 def RepetitionRandomSampling(dataSet, n):
+    """
+    random sampling by features (without replacement)
+    :param dataSet: dataset to be sampled
+    :param n: number of features
+    :return: sampled dataset (in a sub-space)
+    """
     print 'RepetitionRandomSampling:'
     sample = []
     dataSet = dataSet.T
@@ -42,20 +54,36 @@ def RepetitionRandomSampling(dataSet, n):
     sample = np.array(sample)
     return sample.T
 
-# calculate the distance of the two samples
+
 def distEclud(vecA, vecB):
+    """
+    calculate the euclidean distance of 2 given vectors
+    :param vecA:
+    :param vecB:
+    :return: euclidean distance
+    """
     return np.sqrt(sum(np.power(vecA-vecB,2)))
 
-# directly clustering by KMeans
+
 def KMeans_c(dataSet):
+    """
+    KMeans directly
+    :param dataSet:
+    :return:
+    """
     print 'KMeans_c:'
     n_c = rand.randint(1,10)
     clf = cluster.KMeans(n_clusters=n_c)
     feature_pred = clf.fit_predict(dataSet)
     return feature_pred
 
-# random feature selection before clustering by KMeans
+
 def FS_c(dataSet):
+    """
+    random feature selection before clustering by KMeans
+    :param dataSet:
+    :return:
+    """
     print 'FS_c:'
     sample = RepetitionRandomSampling(dataSet, dataSet.shape[1])
     n_c = rand.randint(1, 10)
@@ -63,8 +91,14 @@ def FS_c(dataSet):
     feature_pred = clf.fit_predict(sample)
     return feature_pred
 
-# random selection before clustering by KMeans and then put those unselected data to the nearest centroids
+
 def RSNC_c(dataSet, target):
+    """
+    random selection before clustering by KMeans and then put those unselected data to the nearest centroids
+    :param dataSet:
+    :param target:
+    :return:
+    """
     print 'RSNC_c:'
     n_c = rand.randint(1,10)
     r_s = rand.randint(1,100)
@@ -92,8 +126,14 @@ def RSNC_c(dataSet, target):
     result = result.reindex(range(0,len(target)))         #reindex
     return result['1'].values
 
-# random selection before clustering by KMeans and then put those unselected data to the centroids which its nearest sample belongs to
 def RSNN_c(dataSet, target):
+    """
+    random selection before clustering by KMeans
+    then put those unselected data to the centroids which its nearest sample belongs to
+    :param dataSet:
+    :param target:
+    :return:
+    """
     print 'RSNN_c:'
     n_c = rand.randint(1,10)
     r_s = rand.randint(1,100)
@@ -106,14 +146,33 @@ def RSNN_c(dataSet, target):
     result_selected['1'] = clf.labels_
 
     target_unselected_pred = []
-    for i in range(len(data_unselected.values)):
-        minDist = np.inf
-        minIndex = -1
-        for j in range(len(data_selected.values)):
-            if distEclud(data_unselected.values[i],data_selected.values[j]) < minDist:
-                minDist = distEclud(data_unselected.values[i],data_selected.values[j])
-                minIndex = j
-        target_unselected_pred.append(clf.labels_[minIndex])
+    # convert dataframe to ndarray
+    duv = np.array(data_unselected)
+    dsv = np.array(data_selected)
+    length = dsv.shape[0]
+    dimension_count = dsv.shape[1]
+    # matrix operations instead of for-loop and apply_along_axis
+    for urow in duv:
+        tiled = np.tile(urow, (length, 1))
+        diff = dsv - tiled
+        diff = diff ** 2
+        # column-vector of all ones
+        ones = np.ones((dimension_count, 1))
+        matrixrowsum = np.dot(diff, ones)
+        # get the index of the smallest distance (i.e, nearest sample)
+        minTag = np.argmin(matrixrowsum)
+        target_unselected_pred.append(clf.labels_[minTag])
+
+    # bad practice for efficiency
+    # target_unselected_pred = []
+    # for i in range(len(data_unselected.values)):
+    #     minDist = np.inf
+    #     minIndex = -1
+    #     for j in range(len(data_selected.values)):
+    #         if distEclud(data_unselected.values[i],data_selected.values[j]) < minDist:
+    #             minDist = distEclud(data_unselected.values[i],data_selected.values[j])
+    #             minIndex = j
+    #     target_unselected_pred.append(clf.labels_[minIndex])
 
     result_unselected = target_unselected.copy()
     result_unselected['1'] = np.array(target_unselected_pred)
