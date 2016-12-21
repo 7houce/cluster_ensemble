@@ -21,7 +21,7 @@ def loadIris():
     return iris.data, iris.target
 
 
-def loadDataSet():
+def loadDataSet(fileName):
     """
     load the common dataSet (labels in the last column)
     :return:
@@ -31,7 +31,7 @@ def loadDataSet():
            '**********************************************************************************************************')
     dataSet = []
     target = []
-    fr = open('F:\\UCI Data\\wine\\wine.data.txt')
+    fr = open(fileName)
     for line in fr.readlines():
         curLine = line.strip().split(',')
         target.append(int(curLine[0]))
