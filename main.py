@@ -277,6 +277,9 @@ def FSRSNN_c(dataSet, target, r_clusters=3, r_state=50):
 
 
 def Test():
+    """
+        try push
+    """
     # test for RSNN_c
     # dataSet, target = loadIris()
     # r_clusters = rand.randint(2, 10)
