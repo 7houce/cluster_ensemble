@@ -133,7 +133,7 @@ def RSNC_c(dataSet, target, r_clusters=3, r_state=50):
         matrixrowsum = np.dot(diff, ones)
         # get the index of the smallest distance (i.e, nearest sample)
         minTag = np.argmin(matrixrowsum)
-        target_unselected_pred.append(clf.labels_[minTag])
+        target_unselected_pred.append(minTag)
 
 
     # bad practice for efficiency
@@ -145,7 +145,7 @@ def RSNC_c(dataSet, target, r_clusters=3, r_state=50):
     #         if distEclud(data_unselected.values[i],clf.cluster_centers_[j]) < minDist:
     #             minDist = distEclud(data_unselected.values[i],clf.cluster_centers_[j])
     #             minIndex = j
-    #     target_unselected_pred.append(clf.labels_[minIndex])
+    #     target_unselected_pred.append(minIndex)
 
     result_unselected =  target_unselected.copy()
     result_unselected['1'] = np.array(target_unselected_pred)
