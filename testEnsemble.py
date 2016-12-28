@@ -17,8 +17,8 @@ samples = np.vstack([samples, np.array([0, 1, np.NAN, 0, 1, np.NAN, np.NAN])])
 
 # print samples.shape
 
-samples = np.random.randint(0, 5, size=(200, 100000))
-label = ce.cluster_ensembles_HGPAONLY(samples)
+samples = np.random.randint(0, 5, size=(200, 10000))
+label = ce.cluster_ensembles_MCLAONLY(samples)
 print label
 
 
