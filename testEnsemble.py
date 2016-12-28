@@ -15,6 +15,9 @@ print labels1
 print labels2
 print labels3
 
+
+
+
 # ones = np.ones((4, 1))
 #
 # print (ones)
