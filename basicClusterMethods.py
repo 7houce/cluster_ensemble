@@ -225,7 +225,7 @@ def Test():
     #result = FSRSNN_c(dataSet, target)
     #print result
 
-Test()
+# Test()
 
 
 
