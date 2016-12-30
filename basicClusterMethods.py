@@ -33,7 +33,7 @@ def FS_c(dataSet, r_clusters):
     return feature_pred
 
 
-def RSNC_c(dataSet, target, r_clusters=3, r_state=50):
+def RSNC_c(dataSet, target, r_clusters=3, r_state=50, r_SSR=0.7):
     """
     random selection before clustering by KMeans and then put those unselected data to the nearest centroids
     :param dataSet:
@@ -44,7 +44,7 @@ def RSNC_c(dataSet, target, r_clusters=3, r_state=50):
     """
     dataSet = pd.DataFrame(dataSet)               #add index to dataSet
     target = pd.DataFrame(target)                 #add index to target
-    data_selected, data_unselected, target_selected, target_unselected = dataPre.train_test_split(dataSet, target, train_size=0.7, random_state=r_state)
+    data_selected, data_unselected, target_selected, target_unselected = dataPre.train_test_split(dataSet, target, train_size=r_SSR, random_state=r_state)
     clf = cluster.KMeans(n_clusters=r_clusters)
     clf.fit(data_selected.values)
     result_selected = target_selected.copy()      #to clear up the copy warning
@@ -89,7 +89,7 @@ def RSNC_c(dataSet, target, r_clusters=3, r_state=50):
     return result['1'].values
 
 
-def RSNN_c(dataSet, target, r_clusters=3, r_state=50):
+def RSNN_c(dataSet, target, r_clusters=3, r_state=50, r_SSR=0.7):
     """
     random selection before clustering by KMeans
     then put those unselected data to the centroids which its nearest sample belongs to
@@ -97,11 +97,12 @@ def RSNN_c(dataSet, target, r_clusters=3, r_state=50):
     :param target:
     :param r_clusters:
     :param r_state:
+    :param r_SSR:
     :return:
     """
     dataSet = pd.DataFrame(dataSet)
     target = pd.DataFrame(target)
-    data_selected, data_unselected, target_selected, target_unselected = dataPre.train_test_split(dataSet, target, train_size=0.7, random_state=r_state)
+    data_selected, data_unselected, target_selected, target_unselected = dataPre.train_test_split(dataSet, target, train_size=r_SSR, random_state=r_state)
     clf = cluster.KMeans(n_clusters=r_clusters)
     clf.fit(data_selected)
     result_selected = target_selected.copy()
@@ -145,7 +146,7 @@ def RSNN_c(dataSet, target, r_clusters=3, r_state=50):
     return result['1'].values
 
 
-def FSRSNN_c(dataSet, target, r_clusters=3, r_state=50):
+def FSRSNN_c(dataSet, target, r_clusters=3, r_state=50, r_FSR=0.7, r_SSR=0.7):
     """
     first random feature selection
     then random selection before clustering by KMeans
@@ -154,15 +155,18 @@ def FSRSNN_c(dataSet, target, r_clusters=3, r_state=50):
     :param target:
     :param r_clusters:
     :param r_state:
+    :param r_FSR
+    :param r_SSR
     :return:
     """
-    featureSampledDataSet = dataPre.RepetitionRandomSampling(dataSet, dataSet.shape[1])
+    n_FSR = int(r_FSR * dataSet.shape[1])
+    featureSampledDataSet = dataPre.RepetitionRandomSampling(dataSet, n_FSR)
     print ('After feature Sampling,there remains %d features.' %featureSampledDataSet.shape[1])
 
     featureSampledDataSet = pd.DataFrame(featureSampledDataSet)
     target = pd.DataFrame(target)
     data_selected, data_unselected, target_selected, target_unselected = dataPre.train_test_split(featureSampledDataSet, target,
-                                                                                          train_size=0.7,
+                                                                                          train_size=r_SSR,
                                                                                           random_state=r_state)
     clf = cluster.KMeans(n_clusters=r_clusters)
     clf.fit(data_selected)
