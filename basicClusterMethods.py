@@ -160,7 +160,6 @@ def FSRSNN_c(dataSet, target, r_clusters=3, r_state=50, r_FSR=0.7, r_SSR=0.7):
     :return:
     """
     n_FSR = int(r_FSR * dataSet.shape[1])
-    print ("n_FSR = %d", n_FSR)
     featureSampledDataSet = dataPre.RepetitionRandomSampling(dataSet, n_FSR)
     print ('After feature Sampling,there remains %d features.' %featureSampledDataSet.shape[1])
 
