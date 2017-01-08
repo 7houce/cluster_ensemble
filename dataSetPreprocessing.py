@@ -7,9 +7,10 @@ import pandas as pd
 import random as rand
 
 # dictionary format for dataSet RobotExecution
-dict_1 = {'normal': 1, 'collision': 2, 'obstruction': 3, 'fr_collision': 4}
-dict_2 = {'normal': 1, 'front_col':2, 'back_col':3, 'left_col':4, 'right_col':5}
-dict_4 = {'normal':1, 'collision':2 ,'obstruction':3}
+dict_1 = {'normal': 0, 'collision': 1, 'obstruction': 2, 'fr_collision': 3}
+dict_2 = {'normal': 0, 'front_col':1, 'back_col':2, 'left_col':3, 'right_col':4}
+dict_4 = {'normal':0, 'collision':1 ,'obstruction':2}
+dict_iono = {'g':0, 'b':1}
 
 # three map functions used on target of dataSet RobotExecution
 def robotTargetMap_1(x):
@@ -21,6 +22,8 @@ def robotTargetMap_2(x):
 def robotTargetMap_4(x):
     return dict_4[x]
 
+def ionoMap(x):
+    return dict_iono[x]
 
 def selfAddByOne(x):
     """
@@ -28,7 +31,7 @@ def selfAddByOne(x):
     :param x:
     :return:
     """
-    return (x+1)
+    return x + 1
 
 
 def distEclud(vecA, vecB):
@@ -123,7 +126,8 @@ def loadLastDataSet(fileName):
     for line in fr.readlines():
         curLine = line.strip().split(',')
         target.append(int(curLine[-1]))
-        curLine.remove(curLine[-1])
+        curLine = curLine[:-1]
+        # curLine.remove(curLine[-1])
         fltLine = map(float, curLine)
         dataSet.append(fltLine)
 
@@ -139,6 +143,7 @@ def loadMovement_libras():
     print ('**********************************************************************************************************'
            '**********************************************************************************************************')
     dataSet, target = loadLastDataSet('UCI Data/Movement_libras/movement_libras.data')
+    target -= 1
     return dataSet, target
 
 
@@ -159,7 +164,7 @@ def loadSynthetic_control():
         fltLine = map(float, curLine)
         dataSet.append(fltLine)
 
-    list = [1] * 100
+    list = [0] * 100
     for i in range(6):
         target.extend(list)
         list = map(selfAddByOne, list)
@@ -236,6 +241,50 @@ def loadRobotExecution_4():
     target = map(robotTargetMap_4, target)
     return np.array(dataSet), np.array(target)
 
+def loadGlass():
+    """
+        load glass dataset
+    :return:
+    """
+    print ('Load Glass...')
+    print ('**********************************************************************************************************'
+           '**********************************************************************************************************')
+    dataSet, target = loadLastDataSet('UCI Data/glass/glass.data.txt')
+    return dataSet[:, 1:], target - 1
+
+def loadWine():
+    """
+    load wine dataset
+    :return:
+    """
+    dataSet, target = loadFirstDataSet('UCI Data/wine/wine.data.txt')
+    return dataSet, target - 1
+
+def loadIonosphere():
+    """
+    load ionosphere
+    :return:
+    """
+    print ('Load DataSet')
+    print ('**********************************************************************************************************'
+           '**********************************************************************************************************')
+    dataSet = []
+    target = []
+    fr = open('UCI Data/ionosphere/ionosphere.data.txt')
+
+    for line in fr.readlines():
+        curLine = line.strip().split(',')
+        target.append(curLine[-1])
+        curLine = curLine[:-1]
+        # curLine.remove(curLine[-1])
+        fltLine = map(float, curLine)
+        dataSet.append(fltLine)
+
+    target = map(ionoMap, target)
+
+    return np.array(dataSet), np.array(target)
+
+
 
 def Test():
     # Movement_libras test
@@ -245,16 +294,25 @@ def Test():
 
     # Synthetic_control test
     # dataSet, target = loadSynthetic_control()
-    # print (dataSet.shape)
-    # print (target.shape)
 
     # Digits test
     # dataSet, target = loadDigits()
 
     # RobotExecution test
-    dataSet, target = loadRobotExecution_4()
+    # dataSet, target = loadRobotExecution_4()
+
+    # glass test
+    # dataSet, target = loadGlass()
+
+    # wine test
+    # dataSet, target = loadWine()
+
+    # ionosphere test
+    dataSet, target = loadIonosphere()
     print dataSet
     print target
+    print (dataSet.shape)
+    print (target.shape)
 
 
 
