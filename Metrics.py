@@ -1,6 +1,6 @@
 from sklearn import metrics
 import numpy as np
-
+import time
 
 def diversityBtw2Cluster(label1,label2):
     """
@@ -19,14 +19,19 @@ def diversityMatrix(labels):
     :param labels: labels of all given clusterings as a [n_of_clusterings * n_of_samples] ndarray
     :return: diversity matrix as a [n_of_clusterings * n_of_clusterings] ndarray
     """
+    timesum = 0.0
     divMat = []
     num_of_clusterings = labels.shape[0]
     for i in range(0, num_of_clusterings):
         divRow = []
         for j in range(0, num_of_clusterings):
-            div = diversityBtw2Cluster(labels[i], labels[j])
+            time0 = time.clock()
+            div = 1 - metrics.normalized_mutual_info_score(labels[i], labels[j])
+            time1 = time.clock()
+            timesum += (time1 - time0)
             divRow.append(div)
         divMat.append(divRow)
+    print 'total cal time='+str(timesum)
     return np.array(divMat)
 
 
