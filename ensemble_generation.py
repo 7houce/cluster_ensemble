@@ -9,46 +9,46 @@ from sklearn import cluster
 from sklearn import manifold
 
 
-def getFileName(name, A, B, SSR, FSR, n_members):
+def getFileName(name, s_Clusters, l_Clusters, FSR, SSR, n_members):
     """
     get file name to store the matrix
     :param name:
-    :param A:
-    :param B:
-    :param SSR:
+    :param s_Clusters:
+    :param l_Clusters:
     :param FSR:
+    :param SSR:
     :param n_members:
     :return:
     """
-    return name + '_' + str(A) + '-' + str(B) + '_' + str(SSR) + '_' + str(FSR) + '_' + str(n_members)
+    return name + '_' + str(s_Clusters) + '-' + str(l_Clusters) + '_' + str(SSR) + '_' + str(FSR) + '_' + str(n_members)
 
 
-def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Results/', checkdiversity=True, paint=False, n_components=3):
+def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Results/', checkDiversity=True, paint=False, n_components=3):
     """
     generate ensemble members with consensus (CSPA, HGPA, MCLA) automatically
     :param dataSets: a dictionary that keys are dataset names and values are corresponding load methods
     :param paramSettings: a nested dictionary that keys are dataset names and values are a dictionary containing params
     :param verbose: whether to output the debug information
     :param path: path to store the result matrix
-    :param checkdiversity: whether to check the diversity
+    :param checkDiversity: whether to check the diversity
     :param paint: whether to paint the relationship between solutions using MDS
     :param n_components: number of dimensions to construct using MDS, 3 default
     :return:
     """
     for name, dataset in dataSets.iteritems():
 
-        print 'start generating dataset:'+name
+        print 'start generating dataset:' + name
 
         # get the dataset by load method
         data, target = dataset()
 
         # member and classnum must be defined in paramSettings
         n_members = paramSettings[name]['members']
-        classnum = paramSettings[name]['classnum']
+        class_num = paramSettings[name]['classNum']
 
         # default values of A B FSR SSR
-        A = classnum
-        B = classnum * 10
+        s_Clusters = class_num
+        l_Clusters = class_num * 10
         FSR = 1
         SSR = 0.7
 
@@ -57,9 +57,9 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         if 'SSR' in paramSettings[name]:
             SSR = paramSettings[name]['SSR']
 
-        if 'A' in paramSettings[name] and 'B' in paramSettings[name]:
-            A = paramSettings[name]['A']
-            B = paramSettings[name]['B']
+        if 'small_Clusters' in paramSettings[name] and 'large_Clusters' in paramSettings[name]:
+            s_Clusters = paramSettings[name]['small_Clusters']
+            l_Clusters = paramSettings[name]['large_Clusters']
 
         tag = True
 
@@ -68,7 +68,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
 
         # generate ensemble members
         for i in range(0, n_members):
-            cluster_num = np.random.randint(A, B)
+            cluster_num = np.random.randint(s_Clusters, l_Clusters)
             random_state = np.random.randint(0, sys.maxint - 1)
             # generate ensemble member by FS-RS-NN method
             result = bcm.FSRSNN_c(data, target, r_clusters=cluster_num, r_state=random_state, r_FSR=FSR, r_SSR=SSR)
@@ -90,9 +90,9 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         mat = mat.astype(int)
 
         # do consensus
-        labels_CSPA = ce.cluster_ensembles_CSPAONLY(mat, N_clusters_max=classnum)
-        labels_HGPA = ce.cluster_ensembles_HGPAONLY(mat, N_clusters_max=classnum)
-        labels_MCLA = ce.cluster_ensembles_MCLAONLY(mat, N_clusters_max=classnum)
+        labels_CSPA = ce.cluster_ensembles_CSPAONLY(mat, N_clusters_max=class_num)
+        labels_HGPA = ce.cluster_ensembles_HGPAONLY(mat, N_clusters_max=class_num)
+        labels_MCLA = ce.cluster_ensembles_MCLAONLY(mat, N_clusters_max=class_num)
 
         if verbose:
             print 'Consensus results:'
@@ -108,14 +108,14 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         mat = np.vstack([mat, np.array(temp)])
 
         # path and filename to write the file
-        fileName = getFileName(name, A, B, SSR, FSR, n_members)
+        fileName = getFileName(name, s_Clusters, l_Clusters, SSR, FSR, n_members)
         print 'Dataset ' + name + ', consensus finished, results are saving to file : ' + fileName
 
         # write results to external file, use %d to keep integer part only
         np.savetxt(path + fileName + '.res', mat, fmt='%d', delimiter=',')
 
-        if checkdiversity:
-            clf = cluster.KMeans(n_clusters=classnum)
+        if checkDiversity:
+            clf = cluster.KMeans(n_clusters=class_num)
             clf.fit(data)
             kmlabels = clf.labels_
 
