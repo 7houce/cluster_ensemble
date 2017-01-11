@@ -71,6 +71,8 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
             cluster_num = np.random.randint(s_Clusters, l_Clusters)
             random_state = np.random.randint(0, sys.maxint - 1)
             # generate ensemble member by FS-RS-NN method
+            while(int(data.shape[0]*SSR) < cluster_num):
+                cluster_num = cluster_num / 2
             result = bcm.FSRSNN_c(data, target, r_clusters=cluster_num, r_state=random_state, r_FSR=FSR, r_SSR=SSR)
             # print diversity
             diver = Metrics.diversityBtw2Cluster(result, target)
