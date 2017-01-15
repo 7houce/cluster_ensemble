@@ -11,33 +11,39 @@ from sklearn import manifold
 
 def getFileName(name, s_Clusters, l_Clusters, FSR, SSR, n_members):
     """
-    get file name to store the matrix
-    :param name:
-    :param s_Clusters:
-    :param l_Clusters:
-    :param FSR:
-    :param SSR:
-    :param n_members:
-    :return:
+    get file name to store the matrix (internal use only)
     """
     return name + '_' + str(s_Clusters) + '-' + str(l_Clusters) + '_' + str(SSR) + '_' + str(FSR) + '_' + str(n_members)
 
 
-def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Results/', checkDiversity=True, paint=False, n_components=3):
+def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Results/', checkDiversity=True,
+                                metric='diversity', manifold_type='MDS', subfolder=False):
     """
     generate ensemble members with consensus (CSPA, HGPA, MCLA) automatically
+
+    Parameters
+    ----------
     :param dataSets: a dictionary that keys are dataset names and values are corresponding load methods
     :param paramSettings: a nested dictionary that keys are dataset names and values are a dictionary containing params
     :param verbose: whether to output the debug information
     :param path: path to store the result matrix
     :param checkDiversity: whether to check the diversity
-    :param paint: whether to paint the relationship between solutions using MDS
-    :param n_components: number of dimensions to construct using MDS, 3 default
+    :param metric: which, should be either 'diversity' or 'NID'.
+    :param manifold_type: which method of manifold transformation used to visualize, only 'MDS' is supported now.
+    :param subfolder: whether to save the results into a sub-folder named by names (they should be created manually)
+
+    Returns
+    -------
     :return:
     """
     for name, dataset in dataSets.iteritems():
 
         print 'start generating dataset:' + name
+
+        if subfolder:
+            savepath = path + name + '/'
+        else:
+            savepath = path
 
         # get the dataset by load method
         data, target = dataset()
@@ -52,14 +58,23 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         FSR = 1
         SSR = 0.7
 
+        # get parameters from dictionary if available
         if 'FSR' in paramSettings[name]:
             FSR = paramSettings[name]['FSR']
         if 'SSR' in paramSettings[name]:
             SSR = paramSettings[name]['SSR']
 
         if 'small_Clusters' in paramSettings[name] and 'large_Clusters' in paramSettings[name]:
-            s_Clusters = paramSettings[name]['small_Clusters']
-            l_Clusters = paramSettings[name]['large_Clusters']
+            s_Clusters = int(paramSettings[name]['small_Clusters'])
+            l_Clusters = int(paramSettings[name]['large_Clusters'])
+
+        # there should be at least 2 clusters in the clustering and 1/2 * (n_sample) clusters at most
+        if s_Clusters < 2:
+            s_Clusters = 2
+        if l_Clusters > data.shape[0] * SSR / 2:
+            l_Clusters = int(data.shape[0] * SSR / 2)
+            if l_Clusters < s_Clusters:
+                l_Clusters = s_Clusters
 
         tag = True
 
@@ -104,6 +119,8 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         mat = np.vstack([mat, np.reshape(labels_CSPA, (1, data.shape[0]))])
         mat = np.vstack([mat, np.reshape(labels_HGPA, (1, data.shape[0]))])
         mat = np.vstack([mat, np.reshape(labels_MCLA, (1, data.shape[0]))])
+
+        # put real labels into the matrix
         temp = np.reshape(target, (1, data.shape[0]))
         mat = np.vstack([mat, np.array(temp)])
 
@@ -112,7 +129,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         print 'Dataset ' + name + ', consensus finished, results are saving to file : ' + fileName
 
         # write results to external file, use %d to keep integer part only
-        np.savetxt(path + fileName + '.res', mat, fmt='%d', delimiter=',')
+        np.savetxt(savepath + fileName + '.res', mat, fmt='%d', delimiter=',')
 
         if checkDiversity:
             clf = cluster.KMeans(n_clusters=class_num)
@@ -129,25 +146,36 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
 
             kmnmi = Metrics.diversityBtw2Cluster(kmlabels, target)
             print 'single-model diversity (K-means) =' + str(kmnmi)
-            diverMatrix = Metrics.diversityMatrix(mat)
-            np.savetxt(path + fileName + '_diversity.txt', diverMatrix, delimiter=',')
+            if metric == 'diversity':
+                diverMatrix = Metrics.diversityMatrix(mat)
+                np.savetxt(savepath + fileName + '_diversity.txt', diverMatrix, delimiter=',')
+            else:
+                diverMatrix = Metrics.NIDMatrix(mat)
+                np.savetxt(savepath + fileName + '_nid.txt', diverMatrix, delimiter=',')
 
-        if paint:
-            diverMatrix = Metrics.diversityMatrix(mat)
-            mds = manifold.MDS(n_components=n_components, max_iter=10000, eps=1e-12, dissimilarity='precomputed')
-            pos = mds.fit(diverMatrix).embedding_
-            fig = plt.figure(1, figsize=(7, 5))
-            # clean the figure
+            # save performances
+            perf = np.array([nmi_CSPA, nmi_HGPA, nmi_MCLA, kmnmi])
+            np.savetxt(savepath + fileName + '_performance.txt', perf, fmt='%.6f', delimiter=',')
+
+        if manifold_type == 'MDS':
+            # transform distance matrix into 2-d or 3-d coordinates to visualize
+            mds2d = manifold.MDS(n_components=2, max_iter=10000, eps=1e-12, dissimilarity='precomputed')
+            mds3d = manifold.MDS(n_components=3, max_iter=10000, eps=1e-12, dissimilarity='precomputed')
+            pos2d = mds2d.fit(diverMatrix).embedding_
+            pos3d = mds3d.fit(diverMatrix).embedding_
+            np.savetxt(savepath + fileName + '_mds2d.txt', pos2d, fmt="%.6f", delimiter=',')
+            np.savetxt(savepath + fileName + '_mds3d.txt', pos3d, fmt="%.6f", delimiter=',')
+
+            # save 2-d figure only
+            fig = plt.figure(1)
             plt.clf()
-            ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)
+            ax = plt.axes([0., 0., 1., 1.])
             plt.cla()
-            ax.scatter(pos[0:-3, 0], pos[0:-3, 1], pos[0:-3, 2], c='blue', label='Ensemble Members')
-            ax.scatter(pos[-3:, 0], pos[-3:, 1], pos[-3:, 2], c='red', label='Consensus Clustering')
-            ax.w_xaxis.set_ticklabels([])
-            ax.w_yaxis.set_ticklabels([])
-            ax.w_zaxis.set_ticklabels([])
-            ax.legend(loc='best', shadow=True)
-            ax.set_title('Solution Distribution of dataset ' + name)
-            plt.savefig(path + fileName + '.svg', format='svg', dpi=120)
+            plt.scatter(pos2d[0:-3, 0], pos2d[0:-3, 1], c='blue', label='Ensemble Members')
+            plt.scatter(pos2d[-4:-1, 0], pos2d[-4:-1, 1], c='red', label='Consensus Clustering')
+            plt.scatter(pos2d[-1:, 0], pos2d[-1:, 1], c='yellow', label='Real')
+            plt.legend(loc='best', shadow=True)
+            plt.title(name)
+            plt.savefig(savepath + fileName + '_mds2d_vis.svg', format='svg', dpi=120)
 
     return

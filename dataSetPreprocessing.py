@@ -284,6 +284,27 @@ def loadIonosphere():
 
     return np.array(dataSet), np.array(target)
 
+def loadIsolet():
+    """
+            load isolet dataset
+        :return:
+        """
+    print ('Load ISOLET...')
+    print ('**********************************************************************************************************'
+           '**********************************************************************************************************')
+    dataSet = []
+    target = []
+    fr = open('UCI Data/ISOLET/isolet5.data')
+
+    for line in fr.readlines():
+        curLine = line.strip().split(',')
+        target.append(int((curLine[-1]).replace('.', '')))
+        curLine = curLine[:-1]
+        # curLine.remove(curLine[-1])
+        fltLine = map(float, curLine)
+        dataSet.append(fltLine)
+
+    return np.array(dataSet), np.array(target) - 1
 
 
 def Test():
@@ -308,7 +329,9 @@ def Test():
     # dataSet, target = loadWine()
 
     # ionosphere test
-    dataSet, target = loadIonosphere()
+    # dataSet, target = loadIonosphere()
+
+    dataSet, target = loadIsolet()
     print dataSet
     print target
     print (dataSet.shape)
@@ -316,4 +339,4 @@ def Test():
 
 
 
-# Test()
+Test()
