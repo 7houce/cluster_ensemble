@@ -1,9 +1,14 @@
 import dataSetPreprocessing as dSP
 import ensemble_generation as eg
+import os
 
 dataSets = {'Digit': dSP.loadDigits, 'Movement': dSP.loadMovement_libras, 'Synthetic': dSP.loadSynthetic_control,
             'Glass': dSP.loadGlass, 'Ionosphere': dSP.loadIonosphere, 'Iris': dSP.loadIris,
             'Wine': dSP.loadWine}
+
+ISOdatasets = {'ISOLET': dSP.loadIsolet}
+
+ISOparamSettings = {'ISOLET': {'members': 160, 'classNum': 26, 'FSR': 0.7, 'SSR': 0.7}}
 
 paramSettings1 = {'Digit': {'members': 160, 'classNum': 10, 'FSR': 0.7, 'SSR': 0.5},
                   'Movement': {'members': 160, 'classNum': 15, 'FSR': 0.7, 'SSR': 0.5},
@@ -77,11 +82,19 @@ paramSettings8 = {'Digit': {'members': 160, 'classNum': 10, 'FSR': 0.2, 'SSR': 0
                   'Wine': {'members': 160, 'classNum': 3, 'FSR': 0.2, 'SSR': 0.8},
                  }
 
-eg.autoGenerationWithConsensus(dataSets, paramSettings1, metric='NID', manifold_type='MDS', subfolder=True)
-eg.autoGenerationWithConsensus(dataSets, paramSettings2, metric='NID', manifold_type='MDS', subfolder=True)
-eg.autoGenerationWithConsensus(dataSets, paramSettings3, metric='NID', manifold_type='MDS', subfolder=True)
-eg.autoGenerationWithConsensus(dataSets, paramSettings4, metric='NID', manifold_type='MDS', subfolder=True)
-eg.autoGenerationWithConsensus(dataSets, paramSettings5, metric='NID', manifold_type='MDS', subfolder=True)
-eg.autoGenerationWithConsensus(dataSets, paramSettings6, metric='NID', manifold_type='MDS', subfolder=True)
-eg.autoGenerationWithConsensus(dataSets, paramSettings7, metric='NID', manifold_type='MDS', subfolder=True)
-eg.autoGenerationWithConsensus(dataSets, paramSettings8, metric='NID', manifold_type='MDS', subfolder=True)
+if os.path.isdir('Results/MST/mst/Wine'):
+    print 'is'
+else:
+    os.mkdir('Results/MST/mst/Wine')
+
+
+# eg.autoGenerationWithConsensus(ISOdatasets, ISOparamSettings, metric='NID', manifold_type='MDS', subfolder=True)
+
+# eg.autoGenerationWithConsensus(dataSets, paramSettings1, metric='NID', manifold_type='MDS', subfolder=True)
+# eg.autoGenerationWithConsensus(dataSets, paramSettings2, metric='NID', manifold_type='MDS', subfolder=True)
+# eg.autoGenerationWithConsensus(dataSets, paramSettings3, metric='NID', manifold_type='MDS', subfolder=True)
+# eg.autoGenerationWithConsensus(dataSets, paramSettings4, metric='NID', manifold_type='MDS', subfolder=True)
+# eg.autoGenerationWithConsensus(dataSets, paramSettings5, metric='NID', manifold_type='MDS', subfolder=True)
+# eg.autoGenerationWithConsensus(dataSets, paramSettings6, metric='NID', manifold_type='MDS', subfolder=True)
+# eg.autoGenerationWithConsensus(dataSets, paramSettings7, metric='NID', manifold_type='MDS', subfolder=True)
+# eg.autoGenerationWithConsensus(dataSets, paramSettings8, metric='NID', manifold_type='MDS', subfolder=True)

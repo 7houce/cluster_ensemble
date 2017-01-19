@@ -73,8 +73,8 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
             s_Clusters = 2
         if l_Clusters > data.shape[0] * SSR / 2:
             l_Clusters = int(data.shape[0] * SSR / 2)
-            if l_Clusters < s_Clusters:
-                l_Clusters = s_Clusters
+        if l_Clusters < s_Clusters:
+            l_Clusters = s_Clusters
 
         tag = True
 
@@ -173,7 +173,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
             plt.clf()
             ax = plt.axes([0., 0., 1., 1.])
             plt.cla()
-            plt.scatter(pos2d[0:-3, 0], pos2d[0:-3, 1], c='blue', label='Ensemble Members')
+            plt.scatter(pos2d[0:-4, 0], pos2d[0:-4, 1], c='blue', label='Ensemble Members')
             plt.scatter(pos2d[-4:-1, 0], pos2d[-4:-1, 1], c='red', label='Consensus Clustering')
             plt.scatter(pos2d[-1:, 0], pos2d[-1:, 1], c='yellow', label='Real')
             plt.legend(loc='best', shadow=True)
