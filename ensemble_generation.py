@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn import cluster
 from sklearn import manifold
-
+import os
 
 def getFileName(name, s_Clusters, l_Clusters, FSR, SSR, n_members):
     """
@@ -36,12 +36,18 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
     -------
     :return:
     """
+
+    if not os.path.isdir(path):
+        os.mkdir(path)
+
     for name, dataset in dataSets.iteritems():
 
         print 'start generating dataset:' + name
 
         if subfolder:
             savepath = path + name + '/'
+            if not os.path.isdir(savepath):
+                os.mkdir(savepath)
         else:
             savepath = path
 
@@ -84,7 +90,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         # generate ensemble members
         for i in range(0, n_members):
             cluster_num = np.random.randint(s_Clusters, l_Clusters)
-            random_state = np.random.randint(0, sys.maxint - 1)
+            random_state = np.random.randint(0, 2147483647 - 1)
             # generate ensemble member by FS-RS-NN method
             while(int(data.shape[0]*SSR) < cluster_num):
                 cluster_num = cluster_num / 2
