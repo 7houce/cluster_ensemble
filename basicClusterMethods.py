@@ -171,7 +171,7 @@ def FSRSNN_c(dataSet, target, r_clusters=3, r_state=50, r_FSR=0.7, r_SSR=0.7):
     clf = cluster.KMeans(n_clusters=r_clusters)
     clf.fit(data_selected)
     result_selected = target_selected.copy()
-    result_selected['1'] = clf.labels_
+    result_selected[1] = clf.labels_
 
     target_unselected_pred = []
     # convert dataframe to ndarray
@@ -204,11 +204,12 @@ def FSRSNN_c(dataSet, target, r_clusters=3, r_state=50, r_FSR=0.7, r_SSR=0.7):
     #     target_unselected_pred.append(clf.labels_[minIndex])
 
     result_unselected = target_unselected.copy()
-    result_unselected['1'] = np.array(target_unselected_pred)
+    result_unselected[1] = np.array(target_unselected_pred)
     result = pd.concat([result_selected, result_unselected])
     result = result.reindex(range(0, len(target)))  # reindex
     print ('The output labels after FSRSNN_c:\n')
-    return result['1'].values
+    # print result
+    return result[1].values
 
 
 

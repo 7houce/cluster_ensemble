@@ -82,13 +82,13 @@ paramSettings8 = {'Digit': {'members': 160, 'classNum': 10, 'FSR': 0.2, 'SSR': 0
                   'Wine': {'members': 160, 'classNum': 3, 'FSR': 0.2, 'SSR': 0.8},
                  }
 
-if os.path.isdir('Results/MST/mst/Wine'):
-    print 'is'
-else:
-    os.mkdir('Results/MST/mst/Wine')
+# if os.path.isdir('Results/MST/mst/Wine'):
+#     print 'is'
+# else:
+#     os.mkdir('Results/MST/mst/Wine')
 
 
-# eg.autoGenerationWithConsensus(ISOdatasets, ISOparamSettings, metric='NID', manifold_type='MDS', subfolder=True)
+eg.autoGenerationWithConsensus(ISOdatasets, ISOparamSettings, metric='NID', manifold_type='MDS', subfolder=True)
 
 # eg.autoGenerationWithConsensus(dataSets, paramSettings1, metric='NID', manifold_type='MDS', subfolder=True)
 # eg.autoGenerationWithConsensus(dataSets, paramSettings2, metric='NID', manifold_type='MDS', subfolder=True)
