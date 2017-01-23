@@ -1,7 +1,7 @@
 import random as rand
 
 
-def generateconstraints(targets, n=0):
+def generateConstraints(targets, n=0):
     """
     generate constraints for the given class labels
 
