@@ -1,7 +1,7 @@
 import random as rand
 
 
-def generateConstraints(targets, n=0):
+def generateConstraints(target, n=0):
     """
     generate constraints for the given class labels
 
@@ -14,37 +14,36 @@ def generateConstraints(targets, n=0):
     -------
     :return: must-link constraints and cannot-link constraints in 2 lists.
     """
-    data_len = len(targets)
+    dataLength = len(target)
     must_link = []
     cannot_link = []
     cur_n = 0
-    stop = False
+    flag = True
 
-    while not stop:
+    while flag:
         # choose sample randomly
-        samp1 = rand.randint(0, data_len-1)
-        samp2 = rand.randint(0, data_len-1)
+        sample_1 = rand.randint(0, dataLength-1)
+        sample_2 = rand.randint(0, dataLength-1)
 
         # we don't accept same sample to be the constraint
         # make the first sample to be the smaller one in order to filter the duplicates
-        if samp1 == samp2:
+        if sample_1 == sample_2:
             continue
-        elif samp1 > samp2:
-            temp = samp1
-            samp1 = samp2
-            samp2 = temp
-
+        elif sample_1 > sample_2:
+            temp = sample_1
+            sample_1 = sample_2
+            sample_2 = temp
         # filter the duplicates
         # if they are in the same class, append to the must-link set, or otherwise, the cannot-link set
-        if (samp1, samp2) in must_link or (samp1, samp2) in cannot_link:
+        if (sample_1, sample_2) in must_link or (sample_1, sample_2) in cannot_link:
             continue
-        elif targets[samp1] != targets[samp2]:
-            cannot_link.append((samp1, samp2))
+        elif target[sample_1] != target[sample_2]:
+            cannot_link.append((sample_1, sample_2))
             cur_n += 1
         else:
-            must_link.append((samp1, samp2))
+            must_link.append((sample_1, sample_2))
             cur_n += 1
         if cur_n == n:
-            stop = True
+            flag = False
 
     return must_link, cannot_link
