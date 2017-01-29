@@ -307,6 +307,12 @@ def loadIsolet():
     return np.array(dataSet), np.array(target) - 1
 
 
+def load_gisette_data():
+    aaa = np.loadtxt('/Users/Emrlay/gisette_train.data')
+    labels = np.loadtxt('/Users/Emrlay/n_gisette_train.labels.txt')
+    return aaa, labels
+
+
 def Test():
     # Movement_libras test
     # dataSet, target = loadMovement_libras()

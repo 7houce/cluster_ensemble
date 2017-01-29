@@ -1,19 +1,34 @@
 import basicClusterMethods as bcm
 import Cluster_Ensembles as ce
 import numpy as np
-import sys
 import Metrics
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from sklearn import cluster
 from sklearn import manifold
+import random as rand
 import os
 
-def getFileName(name, s_Clusters, l_Clusters, FSR, SSR, n_members):
+_sampling_methods = {'FSRSNN': bcm.FSRSNN_c, 'FSRSNC': bcm.FSRSNC_c}
+
+
+def getFileName(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_members, f_stable, s_stable):
     """
     get file name to store the matrix (internal use only)
     """
-    return name + '_' + str(s_Clusters) + '-' + str(l_Clusters) + '_' + str(SSR) + '_' + str(FSR) + '_' + str(n_members)
+    if not f_stable and FSR > 1.0:
+        f_string = str(int(FSR_l)) + '~' + str(int(FSR))
+    elif not f_stable and FSR <= 1.0:
+        f_string = str(FSR_l) + '~' + str(FSR)
+    else:
+        f_string = str(FSR)
+
+    if not s_stable and SSR > 1.0:
+        s_string = str(int(SSR_l)) + '~' + str(int(SSR))
+    elif not f_stable and FSR <= 1.0:
+        s_string = str(SSR_l) + '~' + str(SSR)
+    else:
+        s_string = str(SSR)
+    return name + '_' + str(s_Clusters) + '-' + str(l_Clusters) + '_' + s_string + '_' + f_string + '_' + str(n_members)
 
 
 def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Results/', checkDiversity=True,
@@ -63,22 +78,44 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         l_Clusters = class_num * 10
         FSR = 1
         SSR = 0.7
+        FSR_l = 0.05
+        SSR_l = 0.1
+        sampling_method = 'FSRSNN'
+
+        if 'method' in paramSettings[name]:
+            sampling_method = paramSettings[name]['method']
+            if sampling_method not in _sampling_methods.keys():
+                raise ValueError('ensemble generation : Method should be either \'FSRSNN\' or \'FSRSNC\'')
 
         # get parameters from dictionary if available
         if 'FSR' in paramSettings[name]:
             FSR = paramSettings[name]['FSR']
         if 'SSR' in paramSettings[name]:
             SSR = paramSettings[name]['SSR']
+        if 'FSR_L' in paramSettings[name]:
+            FSR_l = paramSettings[name]['FSR_L']
+        if 'SSR_L' in paramSettings[name]:
+            SSR_l = paramSettings[name]['SSR_L']
 
         if 'small_Clusters' in paramSettings[name] and 'large_Clusters' in paramSettings[name]:
             s_Clusters = int(paramSettings[name]['small_Clusters'])
             l_Clusters = int(paramSettings[name]['large_Clusters'])
 
-        # there should be at least 2 clusters in the clustering and 1/2 * (n_sample) clusters at most
+        f_stable_sample = True
+        s_stable_sample = True
+        if 'F_STABLE' in paramSettings[name]:
+            f_stable_sample = paramSettings[name]['F_STABLE']
+        if 'S_STABLE' in paramSettings[name]:
+            s_stable_sample = paramSettings[name]['S_STABLE']
+
+        if FSR_l > FSR:
+            FSR_l = FSR / 2
+        if SSR_l > SSR:
+            SSR_l = SSR / 2
+
+        # there should be at least 2 clusters in the clustering
         if s_Clusters < 2:
             s_Clusters = 2
-        if l_Clusters > data.shape[0] * SSR / 2:
-            l_Clusters = int(data.shape[0] * SSR / 2)
         if l_Clusters < s_Clusters:
             l_Clusters = s_Clusters
 
@@ -89,12 +126,20 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
 
         # generate ensemble members
         for i in range(0, n_members):
+            # determine k randomly
             cluster_num = np.random.randint(s_Clusters, l_Clusters)
             random_state = np.random.randint(0, 2147483647 - 1)
+
+            cur_FSR = FSR
+            cur_SSR = SSR
+            if not f_stable_sample:
+                cur_FSR = rand.uniform(FSR_l, FSR)
+            if not s_stable_sample:
+                cur_SSR = rand.uniform(SSR_l, SSR)
+
             # generate ensemble member by FS-RS-NN method
-            while(int(data.shape[0]*SSR) < cluster_num):
-                cluster_num = cluster_num / 2
-            result = bcm.FSRSNN_c(data, target, r_clusters=cluster_num, r_state=random_state, r_FSR=FSR, r_SSR=SSR)
+            result = _sampling_methods[sampling_method](data, target, r_clusters=cluster_num,
+                                                        r_state=random_state, fsr=cur_FSR, ssr=cur_SSR)
             # print diversity
             diver = Metrics.diversityBtw2Cluster(result, target)
             if verbose:
@@ -133,7 +178,8 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         mat = np.vstack([mat, np.array(temp)])
 
         # path and filename to write the file
-        fileName = getFileName(name, s_Clusters, l_Clusters, SSR, FSR, n_members)
+        fileName = getFileName(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_members,
+                               f_stable_sample, s_stable_sample)
         print 'Dataset ' + name + ', consensus finished, results are saving to file : ' + fileName
 
         # write results to external file, use %d to keep integer part only
