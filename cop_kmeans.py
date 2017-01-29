@@ -1,17 +1,16 @@
-# -*- coding: utf-8 -*-
 import random
 
 
-def cop_kmeans(dataset, k, ml=[], cl=[]):
-    ml, cl = transitive_closure(ml, cl, len(dataset))
+def cop_KMeans(dataSet, k, ml=[], cl=[]):
+    ml, cl = transitive_closure(ml, cl, len(dataSet))
 
-    centers = initialize_centers(dataset, k)
-    clusters = [-1] * len(dataset)
+    centers = initialize_centers(dataSet, k)
+    clusters = [-1] * len(dataSet)
 
     converged = False
     while not converged:
-        clusters_ = [-1] * len(dataset)
-        for i, d in enumerate(dataset):
+        clusters_ = [-1] * len(dataSet)
+        for i, d in enumerate(dataSet):
             indices = closest_clusters(centers, d)
             counter = 0
             if clusters_[i] == -1:
@@ -27,11 +26,11 @@ def cop_kmeans(dataset, k, ml=[], cl=[]):
 
                 if not found_cluster:
                     return None
-        clusters_, centers = compute_centers(clusters_, dataset)
+        clusters_, centers = compute_centers(clusters_, dataSet)
 
         converged = True
         i = 0
-        while converged and i < len(dataset):
+        while converged and i < len(dataSet):
             if clusters[i] != clusters_[i]:
                 converged = False
             i += 1
@@ -44,17 +43,17 @@ def l2_distance(point1, point2):
     return sum([(float(i) - float(j)) ** 2 for (i, j) in zip(point1, point2)])
 
 
-def closest_clusters(centers, datapoint):
-    distances = [l2_distance(center, datapoint) for
+def closest_clusters(centers, dataPoint):
+    distances = [l2_distance(center, dataPoint) for
                  center in centers]
     return sorted(range(len(distances)), key=lambda x: distances[x])
 
 
 # under-specified in the paper
-def initialize_centers(dataset, k):
-    ids = list(range(len(dataset)))
+def initialize_centers(dataSet, k):
+    ids = list(range(len(dataSet)))
     random.shuffle(ids)
-    return [dataset[i] for i in ids[:k]]
+    return [dataSet[i] for i in ids[:k]]
 
 
 def violate_constraints(data_index, cluster_index, clusters, ml, cl):
@@ -69,7 +68,7 @@ def violate_constraints(data_index, cluster_index, clusters, ml, cl):
     return False
 
 
-def compute_centers(clusters, dataset):
+def compute_centers(clusters, dataSet):
     # canonical labeling of clusters
     ids = list(set(clusters))
     c_to_id = dict()
@@ -79,12 +78,12 @@ def compute_centers(clusters, dataset):
         clusters[j] = c_to_id[c]
 
     k = len(ids)
-    dim = len(dataset[0])
+    dim = len(dataSet[0])
     centers = [[0.0] * dim for i in range(k)]
     counts = [0] * k
     for j, c in enumerate(clusters):
         for i in range(dim):
-            centers[c][i] += dataset[j][i]
+            centers[c][i] += dataSet[j][i]
         counts[c] += 1
     for j in range(k):
         for i in range(dim):
