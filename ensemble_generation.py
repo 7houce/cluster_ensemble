@@ -2,7 +2,6 @@ import basicClusterMethods as bcm
 import Cluster_Ensembles as ce
 import numpy as np
 import Metrics
-import matplotlib.pyplot as plt
 from sklearn import cluster
 from sklearn import manifold
 import random as rand

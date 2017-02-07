@@ -236,3 +236,29 @@ def plot_consistency_in_file(resfile, posfile, mlset, nlset, savepath, consisten
     pos = np.loadtxt(posfile, delimiter=',')
     plot_consistency(labels, pos, mlset, nlset, savepath, consistency_type=consistency_type)
     return
+
+
+def plot_mst_result(mstmodel, pos, savepath):
+    """
+
+    :param mstmodel:
+    :param pos:
+    :param savepath:
+    :return:
+    """
+    clusters = np.unique(mstmodel.labels_)
+    fig = plt.figure(1)
+    plt.clf()
+    for i in clusters:
+        xs = pos[0:-4][mstmodel.labels_ == i, 0]
+        ys = pos[0:-4][mstmodel.labels_ == i, 1]
+        ax = plt.axes([0., 0., 1., 1.])
+        if i != -1:
+            plt.scatter(xs, ys, c=_colors[((int(i) + 1) % len(_colors))], label='Clusters-' + str(i))
+        else:
+            plt.scatter(xs, ys, c=_colors[((int(i) + 1) % len(_colors))], label='Outliers')
+    plt.scatter(pos[-4:-1, 0], pos[-4:-1, 1], c='blue', marker='D', label='Consensus')
+    plt.scatter(pos[-1:, 0], pos[-1:, 1], c='red', marker='D', label='Real')
+    plt.legend(loc='best', shadow=True)
+    plt.savefig(savepath, format='png', dpi=240)
+    return
