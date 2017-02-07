@@ -7,11 +7,13 @@ from sklearn import cluster
 from sklearn import manifold
 import random as rand
 import os
+import cluster_visualization as cv
+import generate_constraints_link as gcl
 
 _sampling_methods = {'FSRSNN': bcm.FSRSNN_c, 'FSRSNC': bcm.FSRSNC_c}
 
 
-def getFileName(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_members, f_stable, s_stable):
+def _get_file_name(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_members, f_stable, s_stable, method):
     """
     get file name to store the matrix (internal use only)
     """
@@ -19,6 +21,8 @@ def getFileName(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_members,
         f_string = str(int(FSR_l)) + '~' + str(int(FSR))
     elif not f_stable and FSR <= 1.0:
         f_string = str(FSR_l) + '~' + str(FSR)
+    elif f_stable and FSR > 1.0:
+        f_string = str(int(FSR))
     else:
         f_string = str(FSR)
 
@@ -26,9 +30,12 @@ def getFileName(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_members,
         s_string = str(int(SSR_l)) + '~' + str(int(SSR))
     elif not f_stable and FSR <= 1.0:
         s_string = str(SSR_l) + '~' + str(SSR)
+    elif s_stable and SSR > 1.0:
+        s_string = str(int(SSR))
     else:
         s_string = str(SSR)
-    return name + '_' + str(s_Clusters) + '-' + str(l_Clusters) + '_' + s_string + '_' + f_string + '_' + str(n_members)
+    return name + '_' + str(s_Clusters) + '-' + str(l_Clusters) + '_' + s_string + '_' + f_string + \
+           '_' + str(n_members) +'_' + method
 
 
 def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Results/', checkDiversity=True,
@@ -87,6 +94,14 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
             if sampling_method not in _sampling_methods.keys():
                 raise ValueError('ensemble generation : Method should be either \'FSRSNN\' or \'FSRSNC\'')
 
+        if 'constraints' in paramSettings[name]:
+            constraints_file = paramSettings[name]['constraints']
+            mlset, nlset = gcl.read_constraints(constraints_file)
+        else:
+            constraints_file = ''
+            mlset = []
+            nlset = []
+
         # get parameters from dictionary if available
         if 'FSR' in paramSettings[name]:
             FSR = paramSettings[name]['FSR']
@@ -137,7 +152,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
             if not s_stable_sample:
                 cur_SSR = rand.uniform(SSR_l, SSR)
 
-            # generate ensemble member by FS-RS-NN method
+            # generate ensemble member by given method
             result = _sampling_methods[sampling_method](data, target, r_clusters=cluster_num,
                                                         r_state=random_state, fsr=cur_FSR, ssr=cur_SSR)
             # print diversity
@@ -178,12 +193,12 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         mat = np.vstack([mat, np.array(temp)])
 
         # path and filename to write the file
-        fileName = getFileName(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_members,
-                               f_stable_sample, s_stable_sample)
-        print 'Dataset ' + name + ', consensus finished, results are saving to file : ' + fileName
+        filename = _get_file_name(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_members,
+                                  f_stable_sample, s_stable_sample, sampling_method)
+        print 'Dataset ' + name + ', consensus finished, results are saving to file : ' + filename
 
         # write results to external file, use %d to keep integer part only
-        np.savetxt(savepath + fileName + '.res', mat, fmt='%d', delimiter=',')
+        np.savetxt(savepath + filename + '.res', mat, fmt='%d', delimiter=',')
 
         if checkDiversity:
             clf = cluster.KMeans(n_clusters=class_num)
@@ -201,35 +216,33 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
             kmnmi = Metrics.diversityBtw2Cluster(kmlabels, target)
             print 'single-model diversity (K-means) =' + str(kmnmi)
             if metric == 'diversity':
-                diverMatrix = Metrics.diversityMatrix(mat)
-                np.savetxt(savepath + fileName + '_diversity.txt', diverMatrix, delimiter=',')
+                distance_matrix = Metrics.diversityMatrix(mat)
+                np.savetxt(savepath + filename + '_diversity.txt', distance_matrix, delimiter=',')
             else:
-                diverMatrix = Metrics.NIDMatrix(mat)
-                np.savetxt(savepath + fileName + '_nid.txt', diverMatrix, delimiter=',')
+                distance_matrix = Metrics.NIDMatrix(mat)
+                np.savetxt(savepath + filename + '_nid.txt', distance_matrix, delimiter=',')
 
             # save performances
             perf = np.array([nmi_CSPA, nmi_HGPA, nmi_MCLA, kmnmi])
-            np.savetxt(savepath + fileName + '_performance.txt', perf, fmt='%.6f', delimiter=',')
+            np.savetxt(savepath + filename + '_performance.txt', perf, fmt='%.6f', delimiter=',')
 
         if manifold_type == 'MDS':
             # transform distance matrix into 2-d or 3-d coordinates to visualize
             mds2d = manifold.MDS(n_components=2, max_iter=10000, eps=1e-12, dissimilarity='precomputed')
             mds3d = manifold.MDS(n_components=3, max_iter=10000, eps=1e-12, dissimilarity='precomputed')
-            pos2d = mds2d.fit(diverMatrix).embedding_
-            pos3d = mds3d.fit(diverMatrix).embedding_
-            np.savetxt(savepath + fileName + '_mds2d.txt', pos2d, fmt="%.6f", delimiter=',')
-            np.savetxt(savepath + fileName + '_mds3d.txt', pos3d, fmt="%.6f", delimiter=',')
+            pos2d = mds2d.fit(distance_matrix).embedding_
+            pos3d = mds3d.fit(distance_matrix).embedding_
+            np.savetxt(savepath + filename + '_mds2d.txt', pos2d, fmt="%.6f", delimiter=',')
+            np.savetxt(savepath + filename + '_mds3d.txt', pos3d, fmt="%.6f", delimiter=',')
 
-            # save 2-d figure only
-            fig = plt.figure(1)
-            plt.clf()
-            ax = plt.axes([0., 0., 1., 1.])
-            plt.cla()
-            plt.scatter(pos2d[0:-4, 0], pos2d[0:-4, 1], c='blue', label='Ensemble Members')
-            plt.scatter(pos2d[-4:-1, 0], pos2d[-4:-1, 1], c='red', label='Consensus Clustering')
-            plt.scatter(pos2d[-1:, 0], pos2d[-1:, 1], c='yellow', label='Real')
-            plt.legend(loc='best', shadow=True)
-            plt.title(name)
-            plt.savefig(savepath + fileName + '_mds2d_vis.svg', format='svg', dpi=120)
-
+            cv.draw_ordered_distance_matrix(distance_matrix, savepath + filename+'_original_distance.png',
+                                            savepath + filename+'_odm.png')
+            cv.plot_k_distribution(mat, pos2d, savepath + filename+'_k_distribution.png')
+            if constraints_file != '':
+                cv.plot_consistency(mat, pos2d, mlset, nlset, savepath + filename+'_consistency_both.png',
+                                    consistency_type='both')
+                cv.plot_consistency(mat, pos2d, mlset, nlset, savepath + filename+'_consistency_must.png',
+                                    consistency_type='must')
+                cv.plot_consistency(mat, pos2d, mlset, nlset, savepath + filename+'_consistency_cannot.png',
+                                    consistency_type='cannot')
     return

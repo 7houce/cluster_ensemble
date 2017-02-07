@@ -181,7 +181,7 @@ def quality(label, solutionset):
     return avgquality
 
 
-def consistency(label, mlset, nlset):
+def consistency(label, mlset, nlset, cons_type='both'):
     """
     calculate consistency of a given clustering under a set of Must-Link constraint and can-Not Link constraint
     we simply apply 0-1 consistency here
@@ -191,18 +191,62 @@ def consistency(label, mlset, nlset):
     :param label: label of the clustering to calculate
     :param mlset: Must-Link set
     :param nlset: can-Not-Link set
+    :param cons_type : type of consistency
+                       'both'    : both must-link and cannot-link constraints are considered
+                       'must'    : only must-link constraints are considered
+                       'cannot'  : only cannot-link constraints are considered
 
     Returns
     -------
     :return: consistency as a float value
     """
-    setlength = float(len(mlset) + len(nlset))
+    if cons_type == 'must':
+        setlength = float(len(mlset))
+    elif cons_type == 'cannot':
+        setlength = float(len(nlset))
+    else:
+        setlength = float(len(mlset) + len(nlset))
     mlcount = 0
     nlcount = 0
-    for obj1, obj2 in mlset:
-        if label[obj1] == label[obj2]:
-            mlcount += 1
-    for obj1, obj2 in nlset:
-        if label[obj1] != label[obj2]:
-            nlcount += 1
+    if cons_type != 'cannot':
+        for obj1, obj2 in mlset:
+            if label[obj1] == label[obj2]:
+                mlcount += 1
+    if cons_type != 'must':
+        for obj1, obj2 in nlset:
+            if label[obj1] != label[obj2]:
+                nlcount += 1
     return float(nlcount + mlcount) / setlength
+
+
+def average_consistency(solution_label, labels, mlset, nlset, cons_type='both'):
+    """
+    compute average consistency for each cluster of solutions
+
+    Parameters
+    ----------
+    :param solution_label: cluster labels of solutions
+    :param labels: cluster labels of instances in all solutions (result matrix)
+    :param mlset: must-link constraints
+    :param nlset: cannot-link constraints
+    :param cons_type : type of consistency
+                       'both'    : both must-link and cannot-link constraints are considered
+                       'must'    : only must-link constraints are considered
+                       'cannot'  : only cannot-link constraints are considered
+
+    Returns
+    -------
+    :return: dict with solution cluster labels as keys and avg_consistency as values
+    """
+    sol_clusters = np.unique(solution_label)
+    avg_cons = {}
+    for sol_cluster in sol_clusters:
+        if sol_cluster == -1:
+            continue
+        total_cons = 0.0
+        label_matrix = labels[solution_label == sol_cluster]
+        n_solutions = label_matrix.shape[0]
+        for label in label_matrix:
+            total_cons += consistency(label, mlset, nlset, cons_type)
+        avg_cons[sol_cluster] = total_cons / float(n_solutions)
+    return avg_cons
