@@ -238,6 +238,35 @@ def plot_consistency_in_file(resfile, posfile, mlset, nlset, savepath, consisten
     return
 
 
+def plot_nmi_max(labels, pos, savepath):
+    """
+
+    :param labels:
+    :param pos:
+    :param savepath:
+    :return:
+    """
+    plt.clf()
+    nmi_maxs = []
+    for label in labels[0:-4]:
+        cons = Metrics.normalized_max_mutual_info_score(label, labels[-1])
+        nmi_maxs.append(cons)
+    print (nmi_maxs)
+    cm = plt.get_cmap('CMRmap')
+    cNorm = colors2.Normalize(vmin=min(nmi_maxs), vmax=max(nmi_maxs))
+    scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cm)
+    count = 0
+    for label in labels[0:-4]:
+        plt.scatter(pos[count][0], pos[count][1], c=scalarMap.to_rgba(nmi_maxs[count]))
+        count += 1
+    plt.scatter(pos[-4:-1, 0], pos[-4:-1, 1], c='blue', marker='D', label='Consensus')
+    plt.scatter(pos[-1:, 0], pos[-1:, 1], c='red', marker='D', label='Real')
+    plt.title('NMI distribution, max val='+str(max(nmi_maxs))+' min val='+str(min(nmi_maxs)))
+    plt.savefig(savepath, format='png', dpi=240)
+
+    return
+
+
 def plot_mst_result(mstmodel, pos, savepath):
     """
 

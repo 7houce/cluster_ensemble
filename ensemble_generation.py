@@ -141,7 +141,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         # generate ensemble members
         for i in range(0, n_members):
             # determine k randomly
-            cluster_num = np.random.randint(s_Clusters, l_Clusters)
+            cluster_num = np.random.randint(s_Clusters, l_Clusters + 1)
             random_state = np.random.randint(0, 2147483647 - 1)
 
             cur_FSR = FSR
