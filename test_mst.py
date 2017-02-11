@@ -32,7 +32,7 @@ def mst_with_cutoff(distance_matrix, pos, savepath, cutoff_type='rate',
         else:
             mstmodel = MSTClustering(cutoff=cur_cutoff, min_cluster_size=2,
                                      metric='precomputed', approximate=False)
-        mstmodel.fit(distance_matrix[0:-4, 0:-4])
+        mstmodel.fit(distance_matrix[0:-5, 0:-5])
         filename = savepath + str(cur_cutoff) + '.png'
         cv.plot_mst_result(mstmodel, pos, filename)
         cur_cutoff += interval

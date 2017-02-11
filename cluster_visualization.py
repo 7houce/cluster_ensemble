@@ -11,6 +11,12 @@ import Metrics
 _colors = ['dodgerblue', 'black', 'darkorange', 'magenta', 'darkcyan', 'goldenrod',
            'mediumslateblue', 'khaki', 'saddlebrown', 'crimson']
 
+_ADDITIONAL_RANGE = 5
+_SINGLE_K_MEANS_POS = 5
+_FULL_CONSENSUS_POS = 4
+_FULL_CONSENSUS_COUNT = 3
+_REAL_POS = 1
+
 
 def spin_sts(D):
     """
@@ -99,6 +105,7 @@ def draw_ordered_distance_matrix(distance_matrix, origin_savepath, after_savepat
     CSPA_pos = int(np.where(j == n_solutions - 4)[0])
     HGPA_pos = int(np.where(j == n_solutions - 3)[0])
     MCLA_pos = int(np.where(j == n_solutions - 2)[0])
+    single_km_pos = int(np.where(j == n_solutions - 5)[0])
 
     new_matrix = permute_matrix(distance_matrix, j)
     plt.imshow(new_matrix, vmin=np.min(new_matrix), vmax=np.max(new_matrix))
@@ -109,6 +116,8 @@ def draw_ordered_distance_matrix(distance_matrix, origin_savepath, after_savepat
     plt.annotate('HGPA', xy=(HGPA_pos, n_solutions - 1), xytext=(n_solutions + 5, n_solutions - 40),
                  arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=.2"))
     plt.annotate('MCLA', xy=(MCLA_pos, n_solutions - 1), xytext=(n_solutions + 5, n_solutions - 50),
+                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=.2"))
+    plt.annotate('KM', xy=(single_km_pos, n_solutions - 1), xytext=(n_solutions + 5, n_solutions - 60),
                  arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=.2"))
     plt.savefig(after_savepath, format='png', dpi=240)
     return
@@ -155,7 +164,7 @@ def plot_k_distribution(labels, pos, savepath):
     """
     plt.clf()
     k_value = []
-    for label in labels[0:-4]:
+    for label in labels[0:-5]:
         cons = len(np.unique(label))
         k_value.append(cons)
     print (k_value)
@@ -163,12 +172,15 @@ def plot_k_distribution(labels, pos, savepath):
     cNorm = colors2.Normalize(vmin=min(k_value), vmax=max(k_value))
     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cm)
     count = 0
-    for label in labels[0:-4]:
+    for label in labels[0:-5]:
         plt.scatter(pos[count][0], pos[count][1], c=scalarMap.to_rgba(k_value[count]))
+        plt.text(pos[count][0], pos[count][1], str(k_value[count]), fontsize=7)
         count += 1
     plt.title('Max k = ' + str(max(k_value)) + ' ,Min k = ' + str(min(k_value))+' ,Real k = ' + str(len(np.unique(labels[-1]))))
+    plt.scatter(pos[-5, 0], pos[-5, 1], c='green', marker='s', label='Single-KMeans')
     plt.scatter(pos[-4:-1, 0], pos[-4:-1, 1], c='blue', marker='D', label='Consensus')
     plt.scatter(pos[-1:, 0], pos[-1:, 1], c='red', marker='D', label='Real')
+    plt.legend(loc='best', shadow=True)
     plt.savefig(savepath, format='png', dpi=240)
 
     return
@@ -212,10 +224,14 @@ def plot_consistency(labels, pos, mlset, nlset, savepath, consistency_type='both
     count = 0
     for label in labels[0:-4]:
         plt.scatter(pos[count][0], pos[count][1], c=scalarMap.to_rgba(consistencies[count]))
+        plt.text(pos[count][0], pos[count][1], str(round(consistencies[count], 4)), fontsize=7)
         count += 1
+    plt.scatter(pos[-5, 0], pos[-5, 1], c='green', marker='s', label='Single-KMeans')
     plt.scatter(pos[-4:-1, 0], pos[-4:-1, 1], c='blue', marker='D', label='Consensus')
     plt.scatter(pos[-1:, 0], pos[-1:, 1], c='red', marker='D', label='Real')
-    plt.title(consistency_type + ' Consistency , max val='+str(max(consistencies))+' min val='+str(min(consistencies)))
+    plt.title(consistency_type + ' Consistency , max val='+str(round(max(consistencies), 4)) +
+              ' min val='+str(round(min(consistencies), 4)))
+    plt.legend(loc='best', shadow=True)
     plt.savefig(savepath, format='png', dpi=240)
 
     return
@@ -248,7 +264,7 @@ def plot_nmi_max(labels, pos, savepath):
     """
     plt.clf()
     nmi_maxs = []
-    for label in labels[0:-4]:
+    for label in labels[0:-1]:
         cons = Metrics.normalized_max_mutual_info_score(label, labels[-1])
         nmi_maxs.append(cons)
     print (nmi_maxs)
@@ -256,12 +272,20 @@ def plot_nmi_max(labels, pos, savepath):
     cNorm = colors2.Normalize(vmin=min(nmi_maxs), vmax=max(nmi_maxs))
     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cm)
     count = 0
-    for label in labels[0:-4]:
+    for label in labels[0:-5]:
         plt.scatter(pos[count][0], pos[count][1], c=scalarMap.to_rgba(nmi_maxs[count]))
+        plt.text(pos[count][0], pos[count][1], str(round(nmi_maxs[count], 4)), fontsize=7)
         count += 1
-    plt.scatter(pos[-4:-1, 0], pos[-4:-1, 1], c='blue', marker='D', label='Consensus')
+    plt.scatter(pos[-5, 0], pos[-5, 1], c='green', marker='s', label='Single-KMeans')
+    plt.text(pos[count][0], pos[count][1], str(round(nmi_maxs[count], 4)), fontsize=7)
+    count += 1
+    for label in labels[-4:-1]:
+        plt.scatter(pos[count][0], pos[count][1], c='blue', marker='D', label='Consensus')
+        plt.text(pos[count][0], pos[count][1], str(round(nmi_maxs[count], 4)), fontsize=7)
+        count += 1
     plt.scatter(pos[-1:, 0], pos[-1:, 1], c='red', marker='D', label='Real')
-    plt.title('NMI distribution, max val='+str(max(nmi_maxs))+' min val='+str(min(nmi_maxs)))
+    plt.title('NMI distribution, max val='+str(round(max(nmi_maxs), 4))+' min val='+str(round(min(nmi_maxs), 4)))
+    plt.legend(loc='best', shadow=True)
     plt.savefig(savepath, format='png', dpi=240)
 
     return
@@ -279,13 +303,14 @@ def plot_mst_result(mstmodel, pos, savepath):
     fig = plt.figure(1)
     plt.clf()
     for i in clusters:
-        xs = pos[0:-4][mstmodel.labels_ == i, 0]
-        ys = pos[0:-4][mstmodel.labels_ == i, 1]
+        xs = pos[0:-5][mstmodel.labels_ == i, 0]
+        ys = pos[0:-5][mstmodel.labels_ == i, 1]
         ax = plt.axes([0., 0., 1., 1.])
         if i != -1:
             plt.scatter(xs, ys, c=_colors[((int(i) + 1) % len(_colors))], label='Clusters-' + str(i))
         else:
             plt.scatter(xs, ys, c=_colors[((int(i) + 1) % len(_colors))], label='Outliers')
+    plt.scatter(pos[-5, 0], pos[-5, 1], c='green', marker='s', label='Single-KMeans')
     plt.scatter(pos[-4:-1, 0], pos[-4:-1, 1], c='blue', marker='D', label='Consensus')
     plt.scatter(pos[-1:, 0], pos[-1:, 1], c='red', marker='D', label='Real')
     plt.legend(loc='best', shadow=True)

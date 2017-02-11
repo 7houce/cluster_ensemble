@@ -155,11 +155,3 @@ def all_cluster_consensus(nidpath, respath, distype='nid', cutoff=0.9):
                 print ('consensus diversity (MCLA) =' + str(nmi_MCLA))
 
     return
-
-
-
-# mlset, nlset = gcl.read_constraints('constraints.txt')
-# consistency_print('Results/2.res', 'Results/2.txt', mlset, nlset, '1111.png')
-
-# k_distribution('Results/1.res', 'Results/1.txt', 'ISOLET_k.png')
-# k_distribution('Results/2.res', 'Results/2.txt', 'digit_k.png')

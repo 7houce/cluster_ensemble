@@ -38,7 +38,7 @@ def _get_file_name(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_membe
 
 
 def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Results/', checkDiversity=True,
-                                metric='diversity', manifold_type='MDS', subfolder=False):
+                                metric='nid', manifold_type='MDS', subfolder=False):
     """
     generate ensemble members with consensus (CSPA, HGPA, MCLA) automatically
 
@@ -155,7 +155,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
             result = _sampling_methods[sampling_method](data, target, r_clusters=cluster_num,
                                                         r_state=random_state, fsr=cur_FSR, ssr=cur_SSR)
             # print diversity
-            diver = Metrics.diversityBtw2Cluster(result, target)
+            diver = Metrics.normalized_max_mutual_info_score(result, target)
             if verbose:
                 print 'Member' + str(i) + ' diversity between real labels = ' + str(diver)
             # stack the result into the matrix
@@ -171,6 +171,10 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         # change element type to int for consensus
         mat = mat.astype(int)
 
+        clf = cluster.KMeans(n_clusters=class_num)
+        clf.fit(data)
+        kmlabels = clf.labels_
+
         # do consensus
         labels_CSPA = ce.cluster_ensembles_CSPAONLY(mat, N_clusters_max=class_num)
         labels_HGPA = ce.cluster_ensembles_HGPAONLY(mat, N_clusters_max=class_num)
@@ -183,6 +187,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
             print labels_MCLA
 
         # put consensus results into the matrix
+        mat = np.vstack([mat, np.reshape(kmlabels, (1, data.shape[0]))])
         mat = np.vstack([mat, np.reshape(labels_CSPA, (1, data.shape[0]))])
         mat = np.vstack([mat, np.reshape(labels_HGPA, (1, data.shape[0]))])
         mat = np.vstack([mat, np.reshape(labels_MCLA, (1, data.shape[0]))])
@@ -200,19 +205,16 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         np.savetxt(savepath + filename + '.res', mat, fmt='%d', delimiter=',')
 
         if checkDiversity:
-            clf = cluster.KMeans(n_clusters=class_num)
-            clf.fit(data)
-            kmlabels = clf.labels_
 
             # print labels and diversities (between the real labels)
-            nmi_CSPA = Metrics.diversityBtw2Cluster(labels_CSPA, target)
-            nmi_HGPA = Metrics.diversityBtw2Cluster(labels_HGPA, target)
-            nmi_MCLA = Metrics.diversityBtw2Cluster(labels_MCLA, target)
+            nmi_CSPA = Metrics.normalized_max_mutual_info_score(labels_CSPA, target)
+            nmi_HGPA = Metrics.normalized_max_mutual_info_score(labels_HGPA, target)
+            nmi_MCLA = Metrics.normalized_max_mutual_info_score(labels_MCLA, target)
             print 'consensus result diversity (CSPA) =' + str(nmi_CSPA)
             print 'consensus diversity (HGPA) =' + str(nmi_HGPA)
             print 'consensus diversity (MCLA) =' + str(nmi_MCLA)
 
-            kmnmi = Metrics.diversityBtw2Cluster(kmlabels, target)
+            kmnmi = Metrics.normalized_max_mutual_info_score(kmlabels, target)
             print 'single-model diversity (K-means) =' + str(kmnmi)
             if metric == 'diversity':
                 distance_matrix = Metrics.diversityMatrix(mat)
