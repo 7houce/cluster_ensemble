@@ -1,5 +1,53 @@
 import random as rand
 import numpy as np
+from sklearn.datasets import load_digits, load_iris, load_diabetes
+import dataSetPreprocessing as dp
+
+LINK_ARRAY_SIZE = 20
+dataSet, target = dp.loadIsolet()
+datasets =[
+    #("iris", load_iris())
+    #("digits", load_digits()),
+    #("diabetes", load_diabetes())
+    ("isolet", dataSet, target)
+]
+
+def generate(link_array_size):
+    for name, data_set,target in datasets:
+        samples = np.random.choice(len(data_set), link_array_size)
+        must_links = []
+        cannot_links = []
+        for sample in samples:
+            value = target[sample]
+            for selected in range(len(data_set)):
+                if value == target[selected]:
+                    if sample == selected:
+                        continue
+                    must_link = [
+                        np.asarray(data_set[sample]),
+                        np.asarray(data_set[selected])
+                    ]
+                    must_links.append(must_link)
+                    break
+                else:
+                    continue
+
+        samples = np.random.choice(len(data_set), link_array_size)
+        for sample in samples:
+            value = target[sample]
+            for selected in range(len(data_set)):
+                if value != target[selected]:
+                    cannot_link = [
+                        np.asarray(data_set[sample]),
+                        np.asarray(data_set[selected])
+                    ]
+                    cannot_links.append(cannot_link)
+                    break
+                else:
+                    continue
+
+        links = {'must_link': must_links, 'cannot_link': cannot_links}
+        np.save(name, links)
 
 def generateConstraints(target, n=0):
     """
@@ -261,7 +309,7 @@ def read_constraints(consfile):
                     ml.append(constraint)
                 if c == -1:
                     cl.append(constraint)
-    return ml, cl
+    return np.array(ml), np.array(cl)
 
 
 def store_constraints(consfile, mlset, nlset):
