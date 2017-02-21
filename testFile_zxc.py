@@ -6,29 +6,18 @@ import time
 import Metrics as metric
 import numpy as np
 import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.metrics import normalized_mutual_info_score as nmi
+import constrained_clustering as cc
 
-#dataSets = {'digit': dp.loadDigits, 'movement': dp.loadMovement_libras}
-#dataSets = {'digit': dp.loadDigits, 'movement': dp.loadMovement_libras, 'robot_1': dp.loadRobotExecution_1,
-#            'robot_2': dp.loadRobotExecution_2, 'robot_4': dp.loadRobotExecution_4, 'synthetic': dp.loadSynthetic_control}
 
-#commonParm = {'members': 20, 'classNum': 10, 'small_Clusters': 20, 'large_Clusters': 200, 'FSR': 1, 'SSR': 0.7}
 
-#paramSettings = {'digit': commonParm,
-#                 'movement': commonParm}
+# run single cop_KMeans in dataSet isolet-5 100 times
 
-#eg.autoGenerationWithConsensus(dataSets, paramSettings)
-
-# dataSet, target = dp.loadIris()
-# must_link, cannot_link, ml_graph, cl_graph = gcl.generate_closure_constraints(target, 10)
-# print must_link
-# print cannot_link
-# print ml_graph
-# print cl_graph
-
-#dataSet, target = dp.loadIsolet()
-#must_link, cannot_link = gcl.read_constraints('Constraints/N_constraints.txt')
-#result = []
-#for i in range(100):
+# dataSet, target = dp.loadIsolet()
+# must_link, cannot_link = gcl.read_constraints('Constraints/N_constraints.txt')
+# result = []
+# for i in range(100):
 #    row = []
 #    t1 = time.clock()
 #    clusters, centers = ck.cop_KMeans(dataSet, 26, must_link, cannot_link)
@@ -37,8 +26,10 @@ import pandas as pd
 #    row.append(float(t2-t1))
 #    row.append(float(metric.normalized_max_mutual_info_score(target, clusters)))
 #    result.append(row)
-#np.savetxt('Results/result.txt', result)
-#print 'Finished'
+# np.savetxt('Results/result.txt', result)
+# print 'Finished'
+
+# read result of cop_KMeans
 
 # fr = open('Results/result.txt')
 # dataSet = []
@@ -50,22 +41,29 @@ import pandas as pd
 # dataSet = pd.DataFrame(dataSet)
 # print np.mean(dataSet[1])
 
-#dataSet, target = dp.loadIsolet()
-#must_link, cannot_link = gcl.read_constraints('Constraints/N_constraints.txt')
-#clusters, centers = ck.cop_KMeans(dataSet, 26, must_link, cannot_link)
-#print metric.consistency(clusters, must_link, cannot_link)
+# Constrast between kmeans and e2cp in dataSet isolet-5
 
+dataSet, target = dp.loadIsolet()
+must_link, cannot_link = gcl.read_constraints('Constraints/N_constraints.txt')
+result = []
 
-# gcl.generate(200)
-# links = np.load('isolet.npy').item()
-#
-# dataSet, target = dp.loadIsolet()
-#
-# t1 = time.clock()
-# clf = ck.ConstrainedKMeans(26)
-# clf.fit(dataSet, target, **links)
-# t2 = time.clock()
-# print t2 - t1
-# print clf.labels_
-#
-# print metric.normalized_max_mutual_info_score(target, clf.labels_)
+for i in range(10):
+    single = []
+    N_clusters = 26
+    kmeans = KMeans(n_clusters=N_clusters)
+    kmeans.fit(dataSet)
+    baseline = nmi(target, kmeans.labels_)
+    single.append(round(baseline,3))
+    print round(baseline,3)
+
+    # E2CP
+    e2cp = cc.E2CP(data=dataSet,
+                   ml=must_link,
+                   cl=cannot_link,
+                   n_clusters=N_clusters)
+    e2cp.fit_constrained()
+    e2cpLabels = e2cp.labels
+    single.append(round(nmi(target, e2cpLabels),3))
+    print round(nmi(target, e2cpLabels),3)
+    result.append(single)
+np.savetxt('Results/kmeans_e2cp_constrast.txt', result)
