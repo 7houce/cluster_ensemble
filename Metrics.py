@@ -219,6 +219,61 @@ def consistency(label, mlset, nlset, cons_type='both'):
     return float(nlcount + mlcount) / setlength
 
 
+def consistency_per_cluster(label, mlset, nlset, cons_type='both'):
+    """
+    calculate consistencies of each cluster in a given clustering
+    under a set of Must-Link constraint and cannot Link constraint
+    we simply apply 0-1 consistency here
+
+    Parameters
+    ----------
+    :param label: label of the clustering to calculate
+    :param mlset: Must-Link set
+    :param nlset: can-Not-Link set
+    :param cons_type : type of consistency
+                       'both'    : both must-link and cannot-link constraints are considered
+                       'must'    : only must-link constraints are considered
+                       'cannot'  : only cannot-link constraints are considered
+
+    Returns
+    -------
+    :return: consistencies of each cluster in a dictionary
+    """
+    consistencies = {}
+    clusters = np.unique(label)
+    # consistencies are calculated for each cluster in the clustering
+    for cluster in clusters:
+        setlength = 0
+        mlcount = 0
+        nlcount = 0
+        # if cons_type is not cannot, then must-links must be considered
+        if cons_type != 'cannot':
+            for obj1, obj2 in mlset:
+                # if 2 samples in the constraint do not exist in this cluster, this constraint will be ignored.
+                if label[obj1] != cluster and label[obj2] != cluster:
+                    continue
+                if label[obj1] == label[obj2]:
+                    mlcount += 1
+                    setlength += 1
+                else:
+                    setlength += 1
+        # if cons_type is not must, then cannot-link must be considered
+        if cons_type != 'must':
+            for obj1, obj2 in nlset:
+                if label[obj1] != cluster and label[obj2] != cluster:
+                    continue
+                if label[obj1] != label[obj2]:
+                    nlcount += 1
+                    setlength += 1
+                else:
+                    setlength += 1
+        if setlength == 0:
+            consistencies[cluster] = 1
+        else:
+            consistencies[cluster] = float(mlcount + nlcount) / setlength
+    return consistencies
+
+
 def average_consistency(solution_label, labels, mlset, nlset, cons_type='both'):
     """
     compute average consistency for each cluster of solutions
@@ -241,8 +296,6 @@ def average_consistency(solution_label, labels, mlset, nlset, cons_type='both'):
     sol_clusters = np.unique(solution_label)
     avg_cons = {}
     for sol_cluster in sol_clusters:
-        if sol_cluster == -1:
-            continue
         total_cons = 0.0
         label_matrix = labels[solution_label == sol_cluster]
         n_solutions = label_matrix.shape[0]
