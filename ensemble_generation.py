@@ -8,6 +8,8 @@ import random as rand
 import os
 import cluster_visualization as cv
 import generate_constraints_link as gcl
+import selection_ensemble as se
+import logger_module as lm
 
 _sampling_methods = {'FSRSNN': bcm.FSRSNN_c, 'FSRSNC': bcm.FSRSNC_c}
 
@@ -38,7 +40,7 @@ def _get_file_name(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_membe
 
 
 def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Results/', checkDiversity=True,
-                                metric='nid', manifold_type='MDS', subfolder=False):
+                                metric='nid', manifold_type='MDS', subfolder=False, test_mst_all_consensus=False):
     """
     generate ensemble members with consensus (CSPA, HGPA, MCLA) automatically
 
@@ -52,6 +54,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
     :param metric: which, should be either 'diversity' or 'NID'.
     :param manifold_type: which method of manifold transformation used to visualize, only 'MDS' is supported now.
     :param subfolder: whether to save the results into a sub-folder named by names (they should be created manually)
+    :param test_mst_all_consensus: whether to test mst clustering
 
     Returns
     -------
@@ -133,6 +136,13 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         if l_Clusters < s_Clusters:
             l_Clusters = s_Clusters
 
+        # path and filename to write the file
+        filename = _get_file_name(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_members,
+                                  f_stable_sample, s_stable_sample, sampling_method)
+        if os.path.isfile(savepath + filename + '.res'):
+            print 'kidding me?'
+            return
+
         tag = True
 
         # matrix to store clustering results
@@ -171,6 +181,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         # change element type to int for consensus
         mat = mat.astype(int)
 
+        # single k-means model, for comparison
         clf = cluster.KMeans(n_clusters=class_num)
         clf.fit(data)
         kmlabels = clf.labels_
@@ -196,10 +207,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         temp = np.reshape(target, (1, data.shape[0]))
         mat = np.vstack([mat, np.array(temp)])
 
-        # path and filename to write the file
-        filename = _get_file_name(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_members,
-                                  f_stable_sample, s_stable_sample, sampling_method)
-        print 'Dataset ' + name + ', consensus finished, results are saving to file : ' + filename
+        print 'Dataset ' + name + ', consensus finished, saving...'
 
         # write results to external file, use %d to keep integer part only
         np.savetxt(savepath + filename + '.res', mat, fmt='%d', delimiter=',')
@@ -236,9 +244,13 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
             np.savetxt(savepath + filename + '_mds2d.txt', pos2d, fmt="%.6f", delimiter=',')
             np.savetxt(savepath + filename + '_mds3d.txt', pos3d, fmt="%.6f", delimiter=',')
 
-            cv.draw_ordered_distance_matrix(distance_matrix, savepath + filename+'_original_distance.png',
-                                            savepath + filename+'_odm.png')
+            # draw odm, k distribution and nmi distribution
+            cv.plot_ordered_distance_matrix(distance_matrix, savepath + filename + '_original_distance.png',
+                                            savepath + filename +'_odm.png')
             cv.plot_k_distribution(mat, pos2d, savepath + filename+'_k_distribution.png')
+            cv.plot_nmi_max(mat, pos2d, savepath + filename + '_nmimax_distribution.png')
+
+            # consistencies are calculated while constraints file exists.
             if constraints_file != '':
                 cv.plot_consistency(mat, pos2d, mlset, nlset, savepath + filename+'_consistency_both.png',
                                     consistency_type='both')
@@ -246,4 +258,13 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
                                     consistency_type='must')
                 cv.plot_consistency(mat, pos2d, mlset, nlset, savepath + filename+'_consistency_cannot.png',
                                     consistency_type='cannot')
+                cv.plt_consistency_corelation_with_k(mat, mlset, nlset, savepath + filename+'_normalized.png')
+                # do auto-mst with all consensus
+                # it should not be used often since it will make ensemble generation to be very slow!
+                if test_mst_all_consensus:
+                    logger = lm.get_default_logger()
+                    if not os.path.isdir(savepath + 'MST/'):
+                        os.mkdir(savepath + 'MST/')
+                    se.mst_with_cutoff(distance_matrix, pos2d, mat, savepath + 'MST/' + filename + '_afterMST' + '_',
+                                       logger, mlset, nlset)
     return

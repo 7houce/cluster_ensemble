@@ -54,6 +54,7 @@ import tables
 import warnings
 import psutil
 import os
+import math
 
 np.seterr(invalid='ignore')
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -61,6 +62,7 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 __all__ = ['cluster_ensembles', 'CSPA', 'HGPA', 'load_hypergraph_adjacency',
            'MCLA', 'overlap_matrix']
 
+_mcla_weights = []
 
 def memory():
     """Determine memory specifications of the machine.
@@ -185,6 +187,68 @@ def build_hypergraph_adjacency(cluster_runs):
     for i in xrange(1, N_runs):
         hypergraph_adjacency = scipy.sparse.vstack([hypergraph_adjacency,
                                                     create_membership_matrix(cluster_runs[i])],
+                                                   format='csr')
+
+    return hypergraph_adjacency
+
+
+def build_weighted_hypergraph_adjacency(cluster_runs, clustering_weights, cluster_level_weights, alpha):
+    """Return the adjacency matrix to a hypergraph, in sparse matrix representation.
+
+    Parameters
+    ----------
+    cluster_runs : array of shape (n_partitions, n_samples)
+    clustering_weights : weights of cluster_runs in a list
+
+    Returns
+    -------
+    hypergraph_adjacency : compressed sparse row matrix
+        Represents the hypergraph associated with an ensemble of partitions,
+        each partition corresponding to a row of the array 'cluster_runs'
+        provided at input.
+    """
+
+    N_runs = cluster_runs.shape[0]
+
+    hypergraph_adjacency = create_weighted_membership_matrix(cluster_runs[0], clustering_weights[0],
+                                                             cluster_level_weights[0], alpha)
+    for i in xrange(1, N_runs):
+        hypergraph_adjacency = scipy.sparse.vstack([hypergraph_adjacency,
+                                                    create_weighted_membership_matrix(cluster_runs[i],
+                                                                                      clustering_weights[i],
+                                                                                      cluster_level_weights[i],
+                                                                                      alpha)],
+                                                   format='csr')
+
+    return hypergraph_adjacency
+
+
+def build_weighted_hypergraph_adjacency_hgpa(cluster_runs, clustering_weights, cluster_level_weights, alpha):
+    """Return the adjacency matrix to a hypergraph, in sparse matrix representation.
+
+    Parameters
+    ----------
+    cluster_runs : array of shape (n_partitions, n_samples)
+    clustering_weights : weights of cluster_runs in a list
+
+    Returns
+    -------
+    hypergraph_adjacency : compressed sparse row matrix
+        Represents the hypergraph associated with an ensemble of partitions,
+        each partition corresponding to a row of the array 'cluster_runs'
+        provided at input.
+    """
+
+    N_runs = cluster_runs.shape[0]
+
+    hypergraph_adjacency = create_weighted_membership_matrix_hgpa(cluster_runs[0], clustering_weights[0],
+                                                                  cluster_level_weights[0], alpha)
+    for i in xrange(1, N_runs):
+        hypergraph_adjacency = scipy.sparse.vstack([hypergraph_adjacency,
+                                                    create_weighted_membership_matrix_hgpa(cluster_runs[i],
+                                                                                           clustering_weights[i],
+                                                                                           cluster_level_weights[i],
+                                                                                           alpha)],
                                                    format='csr')
 
     return hypergraph_adjacency
@@ -322,7 +386,8 @@ def cluster_ensembles(cluster_runs, hdf5_file_name=None, verbose=False, N_cluste
     return cluster_ensemble[np.argmax(score)]
 
 
-def cluster_ensembles_MCLAONLY(cluster_runs, hdf5_file_name=None, verbose=False, N_clusters_max=None):
+def cluster_ensembles_MCLAONLY(cluster_runs, hdf5_file_name=None, verbose=False, N_clusters_max=None, weighted=False,
+                               clustering_weights=None, cluster_level_weights=None, alpha=1):
     """Call up to three different functions for heuristic ensemble clustering
        (namely CSPA, HGPA and MCLA) then select as the definitive
        consensus clustering the one with the highest average mutual information score
@@ -378,7 +443,11 @@ def cluster_ensembles_MCLAONLY(cluster_runs, hdf5_file_name=None, verbose=False,
     consensus_functions = [MCLA]
     function_names = ['MCLA']
 
-    hypergraph_adjacency = build_hypergraph_adjacency(cluster_runs)
+    if not weighted:
+        hypergraph_adjacency = build_hypergraph_adjacency(cluster_runs)
+    else:
+        hypergraph_adjacency = build_weighted_hypergraph_adjacency(cluster_runs, clustering_weights,
+                                                                        cluster_level_weights, alpha)
     store_hypergraph_adjacency(hypergraph_adjacency, hdf5_file_name)
 
     for i in xrange(len(consensus_functions)):
@@ -394,7 +463,8 @@ def cluster_ensembles_MCLAONLY(cluster_runs, hdf5_file_name=None, verbose=False,
     return cluster_ensemble[np.argmax(score)]
 
 
-def cluster_ensembles_HGPAONLY(cluster_runs, hdf5_file_name=None, verbose=False, N_clusters_max=None):
+def cluster_ensembles_HGPAONLY(cluster_runs, hdf5_file_name=None, verbose=False, N_clusters_max=None, weighted=False,
+                               clustering_weights=None, cluster_level_weights=None, alpha=1):
     """Call up to three different functions for heuristic ensemble clustering
        (namely CSPA, HGPA and MCLA) then select as the definitive
        consensus clustering the one with the highest average mutual information score
@@ -450,7 +520,11 @@ def cluster_ensembles_HGPAONLY(cluster_runs, hdf5_file_name=None, verbose=False,
     consensus_functions = [HGPA]
     function_names = ['HGPA']
 
-    hypergraph_adjacency = build_hypergraph_adjacency(cluster_runs)
+    if not weighted:
+        hypergraph_adjacency = build_hypergraph_adjacency(cluster_runs)
+    else:
+        hypergraph_adjacency = build_weighted_hypergraph_adjacency_hgpa(cluster_runs, clustering_weights,
+                                                                        cluster_level_weights, alpha)
     store_hypergraph_adjacency(hypergraph_adjacency, hdf5_file_name)
 
     for i in xrange(len(consensus_functions)):
@@ -466,7 +540,8 @@ def cluster_ensembles_HGPAONLY(cluster_runs, hdf5_file_name=None, verbose=False,
     return cluster_ensemble[np.argmax(score)]
 
 
-def cluster_ensembles_CSPAONLY(cluster_runs, hdf5_file_name=None, verbose=False, N_clusters_max=None):
+def cluster_ensembles_CSPAONLY(cluster_runs, hdf5_file_name=None, verbose=False, N_clusters_max=None, weighted=False,
+                               clustering_weights=None, cluster_level_weights=None, alpha=1):
     """Conduct CSPA to ensemble clusterings and return the results as an array of shape (n_samples, )
 
     Parameters
@@ -527,7 +602,11 @@ def cluster_ensembles_CSPAONLY(cluster_runs, hdf5_file_name=None, verbose=False,
         consensus_functions = [CSPA]
         function_names = ['CSPA']
 
-    hypergraph_adjacency = build_hypergraph_adjacency(cluster_runs)
+    if not weighted:
+        hypergraph_adjacency = build_hypergraph_adjacency(cluster_runs)
+    else:
+        hypergraph_adjacency = build_weighted_hypergraph_adjacency(cluster_runs,
+                                                                   clustering_weights, cluster_level_weights, alpha)
     store_hypergraph_adjacency(hypergraph_adjacency, hdf5_file_name)
 
     for i in xrange(len(consensus_functions)):
@@ -821,7 +900,12 @@ def CSPA(hdf5_file_name, cluster_runs, verbose=False, N_clusters_max=None):
     # print(np.asarray(hypergraph_adjacency.todense()).T)
     # print('\n')
 
-    s = scipy.sparse.csr_matrix.dot(hypergraph_adjacency.transpose().tocsr(), hypergraph_adjacency)
+    # s = scipy.sparse.csr_matrix.dot(hypergraph_adjacency.transpose().tocsr(), hypergraph_adjacency)
+    s = scipy.sparse.csr_matrix.dot(hypergraph_adjacency.transpose().tocsr(),
+                                    scipy.sparse.csr_matrix(([1]*hypergraph_adjacency.data.size,
+                                                            hypergraph_adjacency.indices,
+                                                            hypergraph_adjacency.indptr),
+                                                            shape=hypergraph_adjacency.shape))
     # print(np.asarray(s.todense()))
     s = np.squeeze(np.asarray(s.todense()))
     # print(s)
@@ -927,7 +1011,11 @@ def MCLA(hdf5_file_name, cluster_runs, verbose=False, N_clusters_max=None):
     print("INFO: Cluster_Ensembles: MCLA: preparing graph for meta-clustering.")
 
     hypergraph_adjacency = load_hypergraph_adjacency(hdf5_file_name)
-    w = hypergraph_adjacency.sum(axis=1)
+    new_hypergraph_adjacency = scipy.sparse.csr_matrix(([1]*hypergraph_adjacency.data.size,
+                                                            hypergraph_adjacency.indices,
+                                                            hypergraph_adjacency.indptr),
+                                                            shape=hypergraph_adjacency.shape)
+    w = new_hypergraph_adjacency.sum(axis=1)
 
     N_rows = hypergraph_adjacency.shape[0]
 
@@ -948,10 +1036,12 @@ def MCLA(hdf5_file_name, cluster_runs, verbose=False, N_clusters_max=None):
         print("INFO: Cluster_Ensembles: MCLA: "
               "starting computation of Jaccard similarity matrix.")
 
-        squared_MCLA = hypergraph_adjacency.dot(hypergraph_adjacency.transpose())
+        squared_MCLA = new_hypergraph_adjacency.dot(new_hypergraph_adjacency.transpose())
 
-        squared_sums = hypergraph_adjacency.sum(axis=1)
+        squared_sums = new_hypergraph_adjacency.sum(axis=1)
         squared_sums = np.squeeze(np.asarray(squared_sums))
+        del new_hypergraph_adjacency
+        gc.collect()
 
         chunks_size = get_chunk_size(N_rows, 7)
         for i in xrange(0, N_rows, chunks_size):
@@ -985,6 +1075,7 @@ def MCLA(hdf5_file_name, cluster_runs, verbose=False, N_clusters_max=None):
 
     # We are now ready to start the procedure meant to collapse meta-clusters.
     N_consensus = np.amax(cluster_labels) + 1
+    print (N_consensus)
 
     fileh = tables.open_file(hdf5_file_name, 'r+')
 
@@ -1154,6 +1245,95 @@ def create_membership_matrix(cluster_run):
         data = np.ones(indices.size, dtype=int)
 
         return scipy.sparse.csr_matrix((data, indices, indptr), shape=(cluster_ids.size, cluster_run.size))
+
+
+def create_weighted_membership_matrix(cluster_run, clustering_weight, cluster_weights, alpha):
+    """
+    weighted version of 'create_membership_matrix'
+
+    Parameters
+    ----------
+    cluster_run : array of shape (n_partitions, n_samples)
+    clustering_weight : weight of cluster_run
+    cluster_weights : weights of each cluster in cluster level
+    alpha : balance factor to control the trade-off between clustering weight and cluster_weights
+
+    Returns
+    -------
+    An adjacnecy matrix in compressed sparse row form.
+    """
+
+    cluster_run = np.asanyarray(cluster_run)
+
+    if reduce(operator.mul, cluster_run.shape, 1) != max(cluster_run.shape):
+        raise ValueError("\nERROR: Cluster_Ensembles: create_membership_matrix: "
+                         "problem in dimensions of the cluster label vector "
+                         "under consideration.")
+    else:
+        cluster_run = cluster_run.reshape(cluster_run.size)
+
+        cluster_ids = np.unique(np.compress(np.isfinite(cluster_run), cluster_run))
+
+        indices = np.empty(0, dtype=np.int32)
+        indptr = np.zeros(1, dtype=np.int32)
+        data = np.empty(0, dtype=int)
+
+        for elt in cluster_ids:
+            indices = np.append(indices, np.where(cluster_run == elt)[0])
+            indptr = np.append(indptr, indices.size)
+            weight = alpha * clustering_weight + (1 - alpha) * cluster_weights[int(elt)]
+            # cluster-level weighting
+            cluster_data = np.ones(np.where(cluster_run == elt)[0].size, dtype=np.float32) * weight
+            data = np.append(data, cluster_data)
+
+        return scipy.sparse.csr_matrix((data, indices, indptr), shape=(cluster_ids.size, cluster_run.size))
+
+
+def create_weighted_membership_matrix_hgpa(cluster_run, clustering_weight, cluster_weights, alpha):
+    """
+    weighted version of 'create_membership_matrix'
+
+    Parameters
+    ----------
+    cluster_run : array of shape (n_partitions, n_samples)
+    clustering_weight : weight of cluster_run
+    cluster_weights : weights of each cluster in cluster level
+    alpha : balance factor to control the trade-off between clustering weight and cluster_weights
+
+    Returns
+    -------
+    An adjacnecy matrix in compressed sparse row form.
+    """
+
+    cluster_run = np.asanyarray(cluster_run)
+
+    if reduce(operator.mul, cluster_run.shape, 1) != max(cluster_run.shape):
+        raise ValueError("\nERROR: Cluster_Ensembles: create_membership_matrix: "
+                         "problem in dimensions of the cluster label vector "
+                         "under consideration.")
+    else:
+        cluster_run = cluster_run.reshape(cluster_run.size)
+
+        cluster_ids = np.unique(np.compress(np.isfinite(cluster_run), cluster_run))
+
+        indices = np.empty(0, dtype=np.int32)
+        indptr = np.zeros(1, dtype=np.int32)
+        data = np.empty(0, dtype=int)
+
+        actual_hyperedge_size = cluster_ids.size
+
+        for elt in cluster_ids:
+            weight = alpha * clustering_weight + (1 - alpha) * cluster_weights[int(elt)]
+            if weight == 0:
+                actual_hyperedge_size -= 1
+                continue
+            indices = np.append(indices, np.where(cluster_run == elt)[0])
+            indptr = np.append(indptr, indices.size)
+            # cluster-level weighting
+            cluster_data = np.ones(np.where(cluster_run == elt)[0].size, dtype=np.float32) * weight
+            data = np.append(data, cluster_data)
+
+        return scipy.sparse.csr_matrix((data, indices, indptr), shape=(actual_hyperedge_size, cluster_run.size))
 
 
 def metis(hdf5_file_name, N_clusters_max):
@@ -1376,12 +1556,16 @@ def wgraph(hdf5_file_name, w=None, method=0):
                   "non-zero hyper-edges.".format(**locals()))
 
             chunks_size = get_chunk_size(N_rows, 2)
+
+            scaler = 1000
             for i in xrange(0, N_cols, chunks_size):
                 M = np.asarray(e_mat[:, i:min(i + chunks_size, N_cols)].todense())
                 for j in xrange(M.shape[1]):
                     edges = np.where(M[:, j] > 0)[0]
                     if method == 2:
-                        weight = np.array(M[:, j].sum(), dtype=int)
+                        weight = np.array(M[:, j].sum() * scaler, dtype=int)
+                        if int(M[:, j].sum() * scaler) == 0:
+                            print (M[:, j].sum())
                     else:
                         weight = w[i + j]
                     # METIS and hMETIS require vertices numbering starting from 1:
