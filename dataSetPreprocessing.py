@@ -313,6 +313,11 @@ def load_gisette_data():
     return aaa, labels
 
 
+def load_spam_base():
+    data, target = loadLastDataSet('UCI Data/spam/spambase.data')
+    return data[:, 0:-3], target
+
+
 def Test():
     # Movement_libras test
     # dataSet, target = loadMovement_libras()
@@ -337,7 +342,9 @@ def Test():
     # ionosphere test
     # dataSet, target = loadIonosphere()
 
-    dataSet, target = loadIsolet()
+    # dataSet, target = loadIsolet()
+
+    dataSet, target = load_spam_base()
     print dataSet
     print target
     print (dataSet.shape)
