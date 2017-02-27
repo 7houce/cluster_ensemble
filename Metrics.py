@@ -26,7 +26,6 @@ def check_clusterings(labels_true, labels_pred):
     return labels_true, labels_pred
 
 
-
 def normalized_max_mutual_info_score(labels_true, labels_pred):
     """
     A variant version of NMI that is given as:
@@ -303,3 +302,61 @@ def average_consistency(solution_label, labels, mlset, nlset, cons_type='both'):
             total_cons += consistency(label, mlset, nlset, cons_type)
         avg_cons[sol_cluster] = total_cons / float(n_solutions)
     return avg_cons
+
+
+def find_best_match(label_true, label_pred):
+    """
+    find best match between true label and predicted label
+
+    Parameters
+    ----------
+    :param label_true: true labels as 1d array
+    :param label_pred: predicted labels as 1d array
+
+    Returns
+    -------
+    :return: match as a dictionary
+    """
+    if len(label_true) != len(label_pred):
+        raise ValueError("[FIND_BEST_MATCH] length of true labels and predicted labels should be the same")
+    best_match = dict(zip(np.unique(label_pred), [-1]*len(label_true)))
+    real_class = np.unique(label_true)
+    predicted_cluster = np.unique(label_pred)
+    match_num_matrix = []
+    for clu in predicted_cluster:
+        match_num = [] * len(real_class)
+        for cla in real_class:
+            overlap_num = np.logical_and(label_true == cla, label_pred == clu).astype(int).sum()
+            match_num.append(overlap_num)
+        match_num_matrix.append(match_num)
+    match_num_matrix = np.array(match_num_matrix)
+    for cla in real_class:
+        predicted_cluster_rank = np.argsort(-match_num_matrix[:, cla])
+        for clu in predicted_cluster_rank:
+            if best_match[clu] == -1:
+                best_match[clu] = cla
+                break
+    return best_match, match_num_matrix
+
+
+def precision(label_true, label_pred):
+    """
+    clustering precision between true labels and predicted labels
+    based on find_best_match
+
+    Parameters
+    ----------
+    :param label_true: true labels as 1d array
+    :param label_pred: predicted labels as 1d array
+
+    Returns
+    -------
+    :return: precision as a double value
+    """
+    best_match, _ = find_best_match(label_true, label_pred)
+    predicted_clusters = np.unique(label_pred)
+    cur_num = 0
+    n_samples = len(label_true)
+    for clu in predicted_clusters:
+        cur_num += np.logical_and(label_pred == clu, label_true == best_match[clu]).astype(int).sum()
+    return float(cur_num) / n_samples
