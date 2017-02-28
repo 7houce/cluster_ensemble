@@ -10,8 +10,10 @@ import cluster_visualization as cv
 import generate_constraints_link as gcl
 import selection_ensemble as se
 import logger_module as lm
+import efficient_cop_kmeans as eck
+import constrained_clustering as cc
 
-_sampling_methods = {'FSRSNN': bcm.FSRSNN_c, 'FSRSNC': bcm.FSRSNC_c}
+_sampling_methods = {'FSRSNN': bcm.FSRSNN_c, 'FSRSNC': bcm.FSRSNC_c, 'Cop_KMeans': eck.cop_kmeans_wrapper, 'E2CP': cc.E2CP}
 
 
 def _get_file_name(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_members, f_stable, s_stable, method):
@@ -85,7 +87,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         # default values of A B FSR SSR
         s_Clusters = class_num
         l_Clusters = class_num * 10
-        FSR = 1
+        FSR = 1.0
         SSR = 0.7
         FSR_l = 0.05
         SSR_l = 0.1
@@ -162,7 +164,14 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
                 cur_SSR = rand.uniform(SSR_l, SSR)
 
             # generate ensemble member by given method
-            result = _sampling_methods[sampling_method](data, target, r_clusters=cluster_num,
+            if sampling_method == 'Cop_KMeans':
+                result = _sampling_methods[sampling_method](data, cluster_num, mlset, nlset)
+            elif sampling_method == 'E2CP':
+                e2cp = _sampling_methods[sampling_method](data=data, ml=mlset, cl=nlset, n_clusters=class_num)
+                e2cp.fit_constrained()
+                result = e2cp.labels
+            else:
+                result = _sampling_methods[sampling_method](data, target, r_clusters=cluster_num,
                                                         r_state=random_state, fsr=cur_FSR, ssr=cur_SSR)
             # print diversity
             diver = Metrics.normalized_max_mutual_info_score(result, target)

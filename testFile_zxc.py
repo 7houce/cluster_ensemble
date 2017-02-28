@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score as nmi
 import constrained_clustering as cc
+import efficient_cop_kmeans as eck
 
 
 
@@ -43,27 +44,44 @@ import constrained_clustering as cc
 
 # Constrast between kmeans and e2cp in dataSet isolet-5
 
+# dataSet, target = dp.loadIsolet()
+# must_link, cannot_link = gcl.read_constraints('Constraints/N_constraints.txt')
+# result = []
+#
+# for i in range(10):
+#     single = []
+#     N_clusters = 26
+#     kmeans = KMeans(n_clusters=N_clusters)
+#     kmeans.fit(dataSet)
+#     baseline = nmi(target, kmeans.labels_)
+#     single.append(round(baseline,3))
+#     print round(baseline,3)
+#
+#     # E2CP
+#     e2cp = cc.E2CP(data=dataSet,
+#                    ml=must_link,
+#                    cl=cannot_link,
+#                    n_clusters=N_clusters)
+#     e2cp.fit_constrained()
+#     e2cpLabels = e2cp.labels
+#     single.append(round(nmi(target, e2cpLabels),3))
+#     print round(nmi(target, e2cpLabels),3)
+#     result.append(single)
+# np.savetxt('Results/kmeans_e2cp_constrast.txt', result)
+
+# run single efficient_cop_KMeans in dataSet isolet-5
+
 dataSet, target = dp.loadIsolet()
 must_link, cannot_link = gcl.read_constraints('Constraints/N_constraints.txt')
 result = []
-
 for i in range(10):
-    single = []
-    N_clusters = 26
-    kmeans = KMeans(n_clusters=N_clusters)
-    kmeans.fit(dataSet)
-    baseline = nmi(target, kmeans.labels_)
-    single.append(round(baseline,3))
-    print round(baseline,3)
-
-    # E2CP
-    e2cp = cc.E2CP(data=dataSet,
-                   ml=must_link,
-                   cl=cannot_link,
-                   n_clusters=N_clusters)
-    e2cp.fit_constrained()
-    e2cpLabels = e2cp.labels
-    single.append(round(nmi(target, e2cpLabels),3))
-    print round(nmi(target, e2cpLabels),3)
-    result.append(single)
-np.savetxt('Results/kmeans_e2cp_constrast.txt', result)
+   row = []
+   t1 = time.clock()
+   pre_labels = eck.cop_kmeans_wrapper(dataSet, 26, must_link, cannot_link)
+   t2 = time.clock()
+   row.append(int(26))
+   row.append(float(t2-t1))
+   row.append(float(metric.normalized_max_mutual_info_score(target, pre_labels)))
+   result.append(row)
+np.savetxt('Results/result.txt', result)
+print 'Finished'
