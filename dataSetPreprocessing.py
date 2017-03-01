@@ -1,16 +1,17 @@
 # a complete code for data preprocessing
 from sklearn import datasets
+from sklearn import preprocessing
 from sklearn.cross_validation import train_test_split
-
 import numpy as np
 import pandas as pd
 import random as rand
+import scipy.io as sio
 
 # dictionary format for dataSet RobotExecution
 dict_1 = {'normal': 0, 'collision': 1, 'obstruction': 2, 'fr_collision': 3}
-dict_2 = {'normal': 0, 'front_col':1, 'back_col':2, 'left_col':3, 'right_col':4}
-dict_4 = {'normal':0, 'collision':1 ,'obstruction':2}
-dict_iono = {'g':0, 'b':1}
+dict_2 = {'normal': 0, 'front_col': 1, 'back_col': 2, 'left_col': 3, 'right_col': 4}
+dict_4 = {'normal': 0, 'collision': 1, 'obstruction': 2}
+dict_iono = {'g': 0, 'b': 1}
 
 # three map functions used on target of dataSet RobotExecution
 def robotTargetMap_1(x):
@@ -70,9 +71,7 @@ def loadIris():
     simply load the iris data
     :return: tuple(data, target)
     """
-    print ('Load Iris:')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
+    print ('Loading Iris....')
     iris = datasets.load_iris()
     return iris.data, iris.target
 
@@ -82,24 +81,19 @@ def loadDigits():
         simply load the digits data
         :return: tuple(data, target)
         """
-    print ('Load Digits:')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
+    print ('Loading Digits....')
     digits = datasets.load_digits()
     return digits.data, digits.target
 
 
-def loadFirstDataSet(fileName):
+def _load_label_in_first_data(filename):
     """
     load the common dataSet (labels in the first column)
-    :return: tuple(dataSet, target)
+    internal use only
     """
-    print ('Load DataSet')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
     dataSet = []
     target = []
-    fr = open(fileName)
+    fr = open(filename)
 
     for line in fr.readlines():
         curLine = line.strip().split(',')
@@ -111,17 +105,14 @@ def loadFirstDataSet(fileName):
     return np.array(dataSet), np.array(target)
 
 
-def loadLastDataSet(fileName):
+def _load_label_in_last_data(filename):
     """
     load the common dataSet (labels in the last column)
-    :return: tuple(dataSet, target)
+    internal use only
     """
-    print ('Load DataSet')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
     dataSet = []
     target = []
-    fr = open(fileName)
+    fr = open(filename)
 
     for line in fr.readlines():
         curLine = line.strip().split(',')
@@ -139,10 +130,8 @@ def loadMovement_libras():
         load the 'Movement_libras' dataSet
         :return: tuple(dataSet, target)
     """
-    print ('Load Movement_libras')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
-    dataSet, target = loadLastDataSet('UCI Data/Movement_libras/movement_libras.data')
+    print ('Loading Movement_libras...')
+    dataSet, target = _load_label_in_last_data('UCI Data/Movement_libras/movement_libras.data')
     target -= 1
     return dataSet, target
 
@@ -152,9 +141,7 @@ def loadSynthetic_control():
         load the 'synthetic_control' dataSet
         :return: tuple(dataSet, target)
     """
-    print ('Load Synthetic_control')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
+    print ('Loading Synthetic_control...')
     dataSet = []
     target = []
     fr = open('UCI Data/Synthetic_control/synthetic_control.data')
@@ -177,9 +164,7 @@ def loadRobotExecution(fileName):
         load the 'RobotExecution' dataSet
         :return: list(dataSet, target)
     """
-    print ('Load RobotExecution')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
+    print ('Loading RobotExecution...')
     dataSet = []
     target = []
     row = []
@@ -207,9 +192,7 @@ def loadRobotExecution_1():
         load the 'lp1' dataSet
         :return: tuple(dataSet, target)
     """
-    print ('Load RobotExecution_1')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
+    print ('Loading RobotExecution_1...')
     dataSet, target = loadRobotExecution('UCI Data/RobotExecution/lp1.data')
     target = map(robotTargetMap_1, target)
 
@@ -221,9 +204,7 @@ def loadRobotExecution_2():
         load the 'lp2' dataSet
         :return: tuple(dataSet, target)
     """
-    print ('Load RobotExecution_2')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
+    print ('Loading RobotExecution_2...')
     dataSet, target = loadRobotExecution('UCI Data/RobotExecution/lp2.data')
     target = map(robotTargetMap_2, target)
     return np.array(dataSet), np.array(target)
@@ -234,9 +215,7 @@ def loadRobotExecution_4():
         load the 'lp4' dataSet
         :return: tuple(dataSet, target)
     """
-    print ('Load RobotExecution_4')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
+    print ('Loading RobotExecution_4...')
     dataSet, target = loadRobotExecution('UCI Data/RobotExecution/lp4.data')
     target = map(robotTargetMap_4, target)
     return np.array(dataSet), np.array(target)
@@ -246,10 +225,8 @@ def loadGlass():
         load glass dataset
     :return:
     """
-    print ('Load Glass...')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
-    dataSet, target = loadLastDataSet('UCI Data/glass/glass.data.txt')
+    print ('Loading Glass...')
+    dataSet, target = _load_label_in_last_data('UCI Data/glass/glass.data.txt')
     return dataSet[:, 1:], target - 1
 
 def loadWine():
@@ -257,7 +234,7 @@ def loadWine():
     load wine dataset
     :return:
     """
-    dataSet, target = loadFirstDataSet('UCI Data/wine/wine.data.txt')
+    dataSet, target = _load_label_in_first_data('UCI Data/wine/wine.data.txt')
     return dataSet, target - 1
 
 def loadIonosphere():
@@ -265,9 +242,7 @@ def loadIonosphere():
     load ionosphere
     :return:
     """
-    print ('Load DataSet')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
+    print ('Loading ionosphere...')
     dataSet = []
     target = []
     fr = open('UCI Data/ionosphere/ionosphere.data.txt')
@@ -284,14 +259,13 @@ def loadIonosphere():
 
     return np.array(dataSet), np.array(target)
 
+
 def loadIsolet():
     """
             load isolet dataset
         :return:
         """
-    print ('Load ISOLET...')
-    print ('**********************************************************************************************************'
-           '**********************************************************************************************************')
+    print ('Loading ISOLET...')
     dataSet = []
     target = []
     fr = open('UCI Data/ISOLET/isolet5.data')
@@ -313,9 +287,36 @@ def load_gisette_data():
     return aaa, labels
 
 
-def load_spam_base():
-    data, target = loadLastDataSet('UCI Data/spam/spambase.data')
-    return data[:, 0:-3], target
+def load_spam_base(normalized=True):
+    data, target = _load_label_in_last_data('UCI Data/spam/spambase.data')
+    data = data[:, 0:-3]
+    if normalized:
+        data = preprocessing.normalize(data, norm='l2')
+    return data, target
+
+
+def load_coil20():
+    data = sio.loadmat('UCI Data/COIL20/COIL20.mat')
+    fea = data['fea']
+    labels = data['gnd'] - 1
+    labels = labels.flatten()
+    return fea, labels
+
+
+def load_mnist_4000():
+    data = sio.loadmat('UCI Data/MNIST_4000/2k2k.mat')
+    fea = data['fea']
+    labels = data['gnd'] - 1
+    labels = labels.flatten()
+    return fea, labels
+
+
+def load_tr23(sparse=False):
+    return
+
+
+def load_wap(sparse=False):
+    return
 
 
 def Test():
