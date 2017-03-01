@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import random as rand
 import scipy.io as sio
+from scipy.sparse import coo_matrix
 
 # dictionary format for dataSet RobotExecution
 dict_1 = {'normal': 0, 'collision': 1, 'obstruction': 2, 'fr_collision': 3}
@@ -308,15 +309,58 @@ def load_mnist_4000():
     fea = data['fea']
     labels = data['gnd'] - 1
     labels = labels.flatten()
+    labels[labels == 255] = 9
     return fea, labels
 
 
 def load_tr23(sparse=False):
+
     return
 
 
-def load_wap(sparse=False):
-    return
+def load_wap(sparse_type='dense'):
+    rows = np.empty(0, dtype=int)
+    cols = np.empty(0, dtype=int)
+    vals = np.empty(0, dtype=float)
+    with open('UCI Data/wap/wap.mat') as f:
+        flag = True
+        count = 0
+        for line in f:
+            if flag:
+                flag = False
+                continue
+            elements = line.split(' ')
+            elements = [x for x in elements if x != '']
+            idx = elements[0::2]
+            values = elements[1::2]
+            if len(idx) != len(values):
+                raise Exception('index no eq to values')
+            rows = np.hstack([rows, np.full(len(idx), count, dtype=int)])
+            cols = np.hstack([cols, np.array(idx, dtype=int) - 1])
+            vals = np.hstack([vals, np.array(values, dtype=float)])
+            count += 1
+    all_class = []
+    labels = []
+    with open('UCI Data/wap/wap.mat.rclass') as label_f:
+        for line in label_f:
+            if line == '':
+                continue
+            if line in all_class:
+                labels.append(all_class.index(line))
+            else:
+                all_class.append(line)
+                labels.append(all_class.index(line))
+    labels = np.array(labels, dtype=int)
+    wap_data = coo_matrix((vals, (rows, cols)), shape=(max(rows) + 1, max(cols) + 1))
+    if sparse_type == 'coo':
+        pass
+    elif sparse_type == 'csr':
+        wap_data = wap_data.tocsr()
+    elif sparse_type == 'csc':
+        wap_data = wap_data.tocsc()
+    else:
+        wap_data = wap_data.toarray()
+    return wap_data, labels
 
 
 def Test():
