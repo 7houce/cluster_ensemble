@@ -6,6 +6,7 @@ import pandas as pd
 import dataSetPreprocessing as dataPre
 import time
 from sklearn.neighbors import NearestNeighbors
+from sklearn.metrics.pairwise import euclidean_distances
 
 
 def feature_sampling(dataset, n, replacement=True):
@@ -242,7 +243,7 @@ def FSRSNN_c(dataSet, target, r_clusters=3, r_state=50, fsr=0.7, ssr=0.7):
     # perform K-Means on double-sampled dataset with given k
     if r_clusters >= len(data_selected):
         r_clusters = len(data_selected) / 2
-    clf = cluster.KMeans(n_clusters=r_clusters)
+    clf = cluster.KMeans(n_clusters=r_clusters, n_init=1)
     clf.fit(data_selected)
     result_selected = target_selected.copy()
     result_selected[1] = clf.labels_
@@ -337,7 +338,7 @@ def FSRSNC_c(dataSet, target, r_clusters=3, r_state=50, fsr=0.7, ssr=0.7):
     # perform K-Means on double-sampled dataset with given k
     if r_clusters >= len(data_selected):
         r_clusters = len(data_selected) / 2
-    clf = cluster.KMeans(n_clusters=r_clusters)
+    clf = cluster.KMeans(n_clusters=r_clusters, n_init=1)
     clf.fit(data_selected)
     result_selected = target_selected.copy()
     result_selected[1] = clf.labels_
@@ -352,11 +353,18 @@ def FSRSNC_c(dataSet, target, r_clusters=3, r_state=50, fsr=0.7, ssr=0.7):
 
     # use sklearn's NearestNeighbors to find nearest instance
     # kd-tree / balltree will obtain a good performance far from pure matrix operations
-    neigh = NearestNeighbors(n_neighbors=1)
-    neigh.fit(clf.cluster_centers_)
-    for urow in duv:
-        _, index = neigh.kneighbors(urow)
-        target_unselected_pred.append(int(index))
+    # neigh = NearestNeighbors(n_neighbors=1)
+    # neigh.fit(clf.cluster_centers_)
+    # for urow in duv:
+    #     _, index = neigh.kneighbors(urow)
+    #     target_unselected_pred.append(int(index))
+
+    all_distances = euclidean_distances(clf.cluster_centers_, duv, squared=True)
+    for i in range(0, len(duv)):
+        minIndex = np.argmin(all_distances[:, i])
+        target_unselected_pred.append(minIndex)
+        # if minIndex != target_unselected_pred[i]:
+        #     raise Exception('xxxxxx!!!')
 
     # merge the unselected instances with selected instances in true order
     result_unselected = target_unselected.copy()
