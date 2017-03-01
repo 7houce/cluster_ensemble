@@ -3,6 +3,8 @@ from sklearn.metrics.cluster import entropy
 from sklearn.metrics.cluster import contingency_matrix
 import numpy as np
 import time
+import os
+import csv
 
 
 def check_clusterings(labels_true, labels_pred):
@@ -360,3 +362,31 @@ def precision(label_true, label_pred):
     for clu in predicted_clusters:
         cur_num += np.logical_and(label_pred == clu, label_true == best_match[clu]).astype(int).sum()
     return float(cur_num) / n_samples
+
+
+def do_performance_stat_in_folder(folder, stat_file_name):
+    """
+    merge all performances in specific folder into a csv file.
+
+    :param folder:
+    :param stat_file_name:
+    """
+    if not os.path.isdir(folder):
+        raise Exception("first argument should be a folder")
+    with open(folder + stat_file_name, 'wb') as stat_file:
+        writer = csv.writer(stat_file)
+        writer.writerow(['library_name', 'CSPA_Performance', 'HGPA_Performance',
+                         'MCLA_Performance', 'Single-KMeans_Performance'])
+        for f in os.listdir(folder):
+            fname = os.path.splitext(f)
+            if not fname[0].endswith('performance'):
+                continue
+            fullpath = os.path.join(folder, f)
+            if os.path.isfile(fullpath):
+                print 'doing stat for '+f
+                line_holder = [fname[0]]
+                with open(fullpath) as file_obj:
+                    for line in file_obj:
+                        line_holder.append(line)
+                writer.writerow(line_holder)
+    return
