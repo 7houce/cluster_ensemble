@@ -140,7 +140,7 @@ def autoGenerationWithConsensus(dataSets, paramSettings, verbose=True, path='Res
         filename = _get_file_name(name, s_Clusters, l_Clusters, FSR, FSR_l, SSR, SSR_l, n_members,
                                   f_stable_sample, s_stable_sample, sampling_method)
         if os.path.isfile(savepath + filename + '.res'):
-            print 'kidding me?'
+            print 'library already exist.'
             return
 
         tag = True
