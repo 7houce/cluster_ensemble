@@ -217,7 +217,10 @@ def consistency(label, mlset, nlset, cons_type='both'):
         for obj1, obj2 in nlset:
             if label[obj1] != label[obj2]:
                 nlcount += 1
-    return float(nlcount + mlcount) / setlength
+    if setlength == 0:
+        return 1.0
+    else:
+        return float(nlcount + mlcount) / setlength
 
 
 def consistency_per_cluster(label, mlset, nlset, cons_type='both'):
