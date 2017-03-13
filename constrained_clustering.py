@@ -333,20 +333,27 @@ class E2CP(ConstrainedClustering):
         W = (W + W.transpose()) / 2
         Dsqrt = np.diag(np.sum(W, axis=1) ** -0.5)
         Lbar = np.dot(np.dot(Dsqrt, W), Dsqrt)
+        # print Lbar.shape
 
         Z = np.zeros(self.affMat.shape)
         Z[self.ML[:, 0], self.ML[:, 1]] = 1
         Z[self.CL[:, 0], self.CL[:, 1]] = -1
 
-        Fv = np.zeros(Z.shape)
-        for i in range(50):
-            Fv = self.alpha * np.dot(Lbar, Fv) + (1 - self.alpha) * Z
+        # Fv = np.zeros(Z.shape)
+        # for i in range(50):
+        #     Fv = self.alpha * np.dot(Lbar, Fv) + (1 - self.alpha) * Z
+        #
+        # Fh = np.zeros(Z.shape)
+        # for i in range(50):
+        #     Fh = self.alpha * np.dot(Fh, Lbar) + (1 - self.alpha) * Fv
+        #
+        # Fbar = Fh / np.max(np.abs(Fh.reshape(-1)))
 
-        Fh = np.zeros(Z.shape)
-        for i in range(50):
-            Fh = self.alpha * np.dot(Fh, Lbar) + (1 - self.alpha) * Fv
+        # approximation of Fbar instead of the propagation iteration.
+        temp = (1 - self.alpha) * (np.eye(Lbar.shape[0]) - self.alpha * Lbar)
+        Fbar = np.dot(np.dot(temp, Z), temp.conj().T)
 
-        Fbar = Fh / np.max(np.abs(Fh.reshape(-1)))
+        Fbar = Fbar / np.max(np.abs(Fbar.reshape(-1)))
 
         Wbar = np.zeros(self.affMat.shape)
         mlInd = Fbar >= 0
