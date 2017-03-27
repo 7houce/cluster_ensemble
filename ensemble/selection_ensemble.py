@@ -1,8 +1,8 @@
 from __future__ import print_function
 import numpy as np
-from ..ensemble import Cluster_Ensembles as ce
-import Metrics
-from ..utils import io_func
+from ensemble import Cluster_Ensembles as ce
+import evaluation.Metrics as Metrics
+from utils import io_func
 from sklearn import preprocessing
 
 
@@ -176,47 +176,6 @@ def consistency_selection_ensemble_for_library(library_folder, library_name, mls
     consistency_selection_ensemble(labels, mlset, nlset, logger, must_threshold, cannot_threshold,
                                    normalized=normalized, weighted=weighted, weighted_type=weighted_type, alpha=alpha)
     return
-
-
-def do_weighted_ensemble_for_library(library_folder, library_name, constraint_file, logger, alphas, cons_type='both'):
-    logger.debug('===========================================================================================')
-    logger.debug('-----------------Weighted Ensemble for library:'+str(library_name)+'-----------------------')
-    logger.debug('-----------------Weight type = ' + cons_type + '-------------------------------------------')
-    logger.debug('-----------------Constraint File name = ' + constraint_file + '----------------------------')
-    labels = np.loadtxt(library_folder + library_name + '.res', delimiter=',')
-    labels = labels.astype(int)
-    class_num = len(np.unique(labels[-1]))
-    mlset, nlset = io_func.read_constraints(constraint_file)
-    con_per_cluster = []
-    con_clustering = []
-    for label in labels[0:-5]:
-        con_per_cluster.append(Metrics.consistency_per_cluster(label, mlset, nlset, cons_type=cons_type))
-    for label in labels[0:-5]:
-        con_clustering.append(Metrics.consistency(label, mlset, nlset, cons_type=cons_type))
-    nmis = []
-    for alpha in alphas:
-        logger.debug('-------------------------->>>>>> PARAM START <<<<<<<---------------------------------')
-        cspa_labels = ce.cluster_ensembles_CSPAONLY(labels[0:-5], N_clusters_max=class_num,
-                                                    weighted=True, clustering_weights=con_clustering,
-                                                    cluster_level_weights=con_per_cluster, alpha=alpha)
-        nmi = Metrics.normalized_max_mutual_info_score(cspa_labels, labels[-1])
-        logger.debug('CSPA ALPHA=' + str(alpha) + ', NMI=' + str(nmi))
-
-        # hgpa_labels = ce.cluster_ensembles_HGPAONLY(labels[0:-5], N_clusters_max=26,
-        #                                             weighted=True, clustering_weights=con_clustering,
-        #                                             cluster_level_weights=con_per_cluster, alpha=alpha)
-        # hgpa_nmi = Metrics.normalized_max_mutual_info_score(hgpa_labels, labels[-1])
-        # logger.debug('HGPA ALPHA=' + str(alpha) + ', NMI=' + str(hgpa_nmi))
-
-        mcla_labels = ce.cluster_ensembles_MCLAONLY(labels[0:-5], N_clusters_max=class_num,
-                                                    weighted=True, clustering_weights=con_clustering,
-                                                    cluster_level_weights=con_per_cluster, alpha=alpha)
-        mcla_nmi = Metrics.normalized_max_mutual_info_score(mcla_labels, labels[-1])
-        nmis.append([nmi, mcla_nmi])
-        logger.debug('MCLA ALPHA='+str(alpha)+', NMI='+str(mcla_nmi))
-        logger.debug('------------------------->>>>>> END OF THIS PARAM <<<<<<-------------------------------')
-    logger.debug('===========================================================================================')
-    return nmis
 
 
 def batch_do_consistency_selection_for_library(library_folder, library_name, constraint_file, logger,
