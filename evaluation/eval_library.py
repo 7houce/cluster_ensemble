@@ -1,15 +1,29 @@
 import numpy as np
 import ensemble.Cluster_Ensembles as ce
+import ensemble.spectral_ensemble as spec
 import evaluation.Metrics as Metrics
 import csv
 import os
 
 _ensemble_method = {'CSPA': ce.cluster_ensembles_CSPAONLY,
                     'HGPA': ce.cluster_ensembles_HGPAONLY,
-                    'MCLA': ce.cluster_ensembles_MCLAONLY}
+                    'MCLA': ce.cluster_ensembles_MCLAONLY,
+                    'Spectral': spec.spectral_ensemble}
+
+_default_evaluate_methods = ['CSPA', 'Spectral']
 
 
-def evaluate_library(name, path, class_num, target, evaluate_methods=['CSPA']):
+def evaluate_library(name, path, class_num, target, evaluate_methods=_default_evaluate_methods):
+    """
+    do evaluation for a given library
+
+    :param name:
+    :param path:
+    :param class_num:
+    :param target:
+    :param evaluate_methods:
+    :return:
+    """
     labels = np.loadtxt(path + name, delimiter=',')
     if not name.endswith('_pure.res'):
         labels = labels[0:-5]
@@ -20,7 +34,18 @@ def evaluate_library(name, path, class_num, target, evaluate_methods=['CSPA']):
     return scores
 
 
-def evaluate_libraries_to_file(names, path, class_num, target, filename, evaluate_methods=['CSPA']):
+def evaluate_libraries_to_file(names, path, class_num, target, filename, evaluate_methods=_default_evaluate_methods):
+    """
+    do library evaluation for given libraries
+
+    :param names:
+    :param path:
+    :param class_num:
+    :param target:
+    :param filename:
+    :param evaluate_methods:
+    :return:
+    """
     with open(filename, 'wb') as f:
         writer = csv.writer(f)
         header = ['LibraryName']
@@ -34,12 +59,17 @@ def evaluate_libraries_to_file(names, path, class_num, target, filename, evaluat
     return
 
 
-def do_eval_in_folder(prefix, folder, class_num, target, filename, evaluate_methods=['CSPA']):
+def do_eval_in_folder(prefix, folder, class_num, target, filename, evaluate_methods=_default_evaluate_methods):
     """
-    merge all performances in specific folder into a csv file.
+    do library evaluation for given libraries(with a specific prefix) in a folder
 
+    :param prefix:
     :param folder:
-    :param stat_file_name:
+    :param class_num:
+    :param target:
+    :param filename:
+    :param evaluate_methods:
+    :return:
     """
     names = []
     if not os.path.isdir(folder):

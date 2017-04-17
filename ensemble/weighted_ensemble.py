@@ -1,12 +1,14 @@
 from utils import io_func
 import evaluation.Metrics as Metrics
 from ensemble import Cluster_Ensembles as ce
+from ensemble import spectral_ensemble as spec
 import numpy as np
 
 _ensemble_method = {'CSPA': ce.cluster_ensembles_CSPAONLY,
                     'HGPA': ce.cluster_ensembles_HGPAONLY,
-                    'MCLA': ce.cluster_ensembles_MCLAONLY}
-_default_ensemble_method = ['CSPA']
+                    'MCLA': ce.cluster_ensembles_MCLAONLY,
+                    'Spectral': spec.weighted_spectral_ensemble}
+_default_ensemble_method = ['CSPA', 'Spectral']
 
 
 def do_weighted_ensemble_for_library(library_folder, library_name, class_num, target,
@@ -50,13 +52,15 @@ def do_weighted_ensemble_for_library(library_folder, library_name, class_num, ta
     nmis = []
     for alpha in alphas:
         logger.debug('-------------------------->>>>>> PARAM START <<<<<<<---------------------------------')
+        cur_nmis = []
         for method in ensemble_method:
             ensemble_labels = _ensemble_method[method](labels, N_clusters_max=class_num,
                                                        weighted=True, clustering_weights=con_clustering,
                                                        cluster_level_weights=con_per_cluster, alpha=alpha)
             ensemble_nmi = Metrics.normalized_max_mutual_info_score(ensemble_labels, target)
             logger.debug(method + ' alpha=' + str(alpha) + ', NMI=' + str(ensemble_nmi))
-            nmis.append(ensemble_nmi)
+            cur_nmis.append(ensemble_nmi)
+        nmis.append(cur_nmis)
         logger.debug('------------------------->>>>>> END OF THIS PARAM <<<<<<-------------------------------')
     logger.debug('===========================================================================================')
     return nmis
