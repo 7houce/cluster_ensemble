@@ -15,12 +15,7 @@ import utils.io_func as io_func
 import constrained_methods.efficient_cop_kmeans as eck
 import constrained_methods.constrained_clustering as cc
 import evaluation.Metrics as Metrics
-# from ..ensemble import Cluster_Ensembles as ce
-# from ..utils import cluster_visualization as cv
-# from ..utils import io_func
-# from ..constrained_methods import efficient_cop_kmeans as eck
-# from ..constrained_methods import constrained_clustering as cc
-# from ..evaluation import Metrics
+
 _sampling_methods = {'FSRSNN': sm.FSRSNN,
                      'FSRSNC': sm.FSRSNC}
 
@@ -147,10 +142,10 @@ def generate_library(data, target, dataset_name, n_members, class_num,
 
     # we won't generate the library with same sampling rate and size if existing
     if os.path.isfile(savepath + filename + '.res'):
-        print ('library already exists.')
+        print ('[Library Generation] : library already exists.')
         return
     elif os.path.isfile(savepath + filename + '_pure.res'):
-        print('corresponding pure library already exists.')
+        print ('[Library Generation] : corresponding pure library already exists.')
         return
 
     tag = True
@@ -200,7 +195,7 @@ def generate_library(data, target, dataset_name, n_members, class_num,
     # change element type to int for consensus
     mat = mat.astype(int)
 
-    if generate_only:
+    if generate_only or is_constrained:
         np.savetxt(savepath + filename + '_pure' + '.res', mat, fmt='%d', delimiter=',')
         return filename+'_pure.res'
 
@@ -242,9 +237,6 @@ def generate_library(data, target, dataset_name, n_members, class_num,
     # save performances
     perf = np.array([nmi_CSPA, nmi_HGPA, nmi_MCLA, kmnmi])
     np.savetxt(savepath + filename + '_performance.txt', perf, fmt='%.6f', delimiter=',')
-
-    if is_constrained:
-        return
 
     if metric == 'diversity':
         distance_matrix = Metrics.diversityMatrix(mat)
