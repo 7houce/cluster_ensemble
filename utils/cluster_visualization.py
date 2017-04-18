@@ -458,3 +458,30 @@ def plot_for_all_library(path, suffix='res', type='k', mlset=None, nlset=None):
             if type == 'odm':
                 plot_ordered_distance_matrix_for_library(path, fname[0])
     return
+
+
+def plot_k_consistency_distribution(labels, mlset, nlset, savepath, pure=True, cons_type='must'):
+    k_value = []
+    if not pure:
+        labels = labels[0:-5]
+    for label in labels:
+        cons = len(np.unique(label))
+        k_value.append(cons)
+
+    texts = [''] * len(labels)
+    plot_labels = [None] * len(labels)
+    markers = ['x'] * len(labels)
+    colors = ['blue'] * len(labels)
+    title = 'k-'+cons_type+' consistency Correlation'
+
+    consistencies = []
+    for label in labels:
+        cons = Metrics.consistency(label, mlset, nlset, cons_type=cons_type)
+        consistencies.append(cons)
+    pos = np.hstack((np.array(k_value).reshape(-1, 1), np.array(consistencies).reshape(-1, 1)))
+    print (pos.shape)
+
+    _plot_generalized_scatter(pos, colors, texts, markers, plot_labels, savepath, title=title,
+                              xlabel='k', ylabel='consistency', legend_need=False)
+    return
+

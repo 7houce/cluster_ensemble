@@ -3,6 +3,7 @@ import evaluation.Metrics as Metrics
 from ensemble import Cluster_Ensembles as ce
 from ensemble import spectral_ensemble as spec
 import numpy as np
+from sklearn import preprocessing
 
 _ensemble_method = {'CSPA': ce.cluster_ensembles_CSPAONLY,
                     'HGPA': ce.cluster_ensembles_HGPAONLY,
@@ -13,7 +14,7 @@ _default_ensemble_method = ['CSPA', 'Spectral']
 
 def do_weighted_ensemble_for_library(library_folder, library_name, class_num, target,
                                      constraint_file, logger, alphas, cons_type='both',
-                                     ensemble_method=_default_ensemble_method):
+                                     ensemble_method=_default_ensemble_method, scale=False):
     """
 
     :param library_folder:
@@ -48,6 +49,10 @@ def do_weighted_ensemble_for_library(library_folder, library_name, class_num, ta
         con_per_cluster.append(Metrics.consistency_per_cluster(label, mlset, nlset, cons_type=cons_type))
     for label in labels:
         con_clustering.append(Metrics.consistency(label, mlset, nlset, cons_type=cons_type))
+
+    if scale:
+        scaler = preprocessing.MinMaxScaler()
+        con_clustering = scaler.fit_transform(np.array(con_clustering))
 
     nmis = []
     for alpha in alphas:
