@@ -240,7 +240,7 @@ def loadIsolet():
     print ('Loading ISOLET...')
     dataSet = []
     target = []
-    fr = open('../UCI Data/ISOLET/isolet5.data')
+    fr = open('UCI Data/ISOLET/isolet5.data')
 
     for line in fr.readlines():
         curLine = line.strip().split(',')
@@ -276,6 +276,23 @@ def load_coil20():
     return fea, labels
 
 
+def load_digit():
+    data = []
+    target = []
+    fr = open('UCI Data/OptDigits/optdigits.tra')
+    for line in fr.readlines():
+        cur = line.strip().split(',')
+        target.append(int(cur[-1]))
+        cur = cur[:-1]
+        flt_line = map(float, cur)
+        data.append(flt_line)
+
+    data = np.array(data)
+    target = np.array(target)
+
+    return data, target
+
+
 def load_mnist_4000():
     data = sio.loadmat('UCI Data/MNIST_4000/2k2k.mat')
     fea = data['fea']
@@ -283,6 +300,26 @@ def load_mnist_4000():
     labels = data['gnd'] - 1
     labels = labels.flatten()
     labels[labels == 255] = 9
+    return fea, labels
+
+
+def load_mnist_full():
+    data = sio.loadmat('UCI Data/MNIST_FULL/Orig.mat')
+    fea = data['fea']
+    fea = fea.astype(np.float64)
+    labels = data['gnd'] - 1
+    labels = labels.flatten()
+    labels[labels == 255] = 9
+    return fea, labels
+
+
+def load_usps():
+    data = sio.loadmat('UCI Data/USPS/USPS.mat')
+    fea = data['fea']
+    fea = fea.astype(np.float64)
+    labels = data['gnd'] - 1
+    labels = labels.flatten()
+    # labels[labels == 255] = 9
     return fea, labels
 
 
@@ -336,6 +373,92 @@ def load_wap(sparse_type='dense'):
     return wap_data, labels
 
 
+def load_musk_2_data(normalized=True):
+    fr = open('UCI Data/MUSK/Musk-2.data')
+    count = 0
+    feature_vectors = []
+    target = []
+    for line in fr.readlines():
+        count += 1
+        line_elements = line.strip().split(',')
+        feature = line_elements[2:-1]
+        feature = map(float, feature)
+        feature_vectors.append(feature)
+        target.append(0 if line_elements[-1] == '0.' else 1)
+        print str(count) + " -- " + str(len(line_elements)) + "  " + line_elements[-1]
+    target = np.array(target)
+    feature_vectors = np.array(feature_vectors)
+    print feature_vectors.shape
+    if normalized:
+        feature_vectors = preprocessing.normalize(feature_vectors, norm='l2')
+        # min_max_scaler = preprocessing.MinMaxScaler()
+        # feature_vectors = min_max_scaler.fit_transform(feature_vectors)
+        return feature_vectors, target
+    # print np.sum(target)
+    # print target
+    return feature_vectors, target
+
+
+def load_sat(normalized=True):
+    fr = open('UCI Data/SAT/sat.data')
+    count = 0
+    feature_vectors = []
+    target = []
+    for line in fr.readlines():
+        count += 1
+        line_elements = line.strip().split(' ')
+        feature = line_elements[0:-1]
+        feature = map(float, feature)
+        feature_vectors.append(feature)
+        target.append(5 if line_elements[-1] == '7' else (int(line_elements[-1]) - 1))
+        print str(count) + " -- " + str(len(line_elements)) + "  " + line_elements[-1]
+    target = np.array(target)
+    feature_vectors = np.array(feature_vectors)
+    print feature_vectors.shape
+    if normalized:
+        min_max_scaler = preprocessing.MinMaxScaler()
+        feature_vectors = min_max_scaler.fit_transform(feature_vectors)
+    # print np.sum(target)
+    # print target
+    return feature_vectors, target
+
+
+def load_skin(normalized=True):
+    dataset = []
+    target = []
+    fr = open('UCI Data/Skin/Skin_NonSkin.txt')
+
+    for line in fr.readlines():
+        cur_line = line.strip().split('\t')
+        target.append(int(cur_line[-1]))
+        cur_line = cur_line[:-1]
+        # curLine.remove(curLine[-1])
+        flt_line = map(float, cur_line)
+        dataset.append(flt_line)
+    dataset = np.array(dataset)
+    target = np.array(target)
+    if normalized:
+        data_normed = preprocessing.normalize(dataset, norm='l2')
+        return data_normed, target
+        # min_max_scaler = preprocessing.MinMaxScaler()
+        # dataset = min_max_scaler.fit_transform(dataset)
+
+    return dataset, target
+
+
+def load_covtype():
+    data = np.loadtxt('covtype.data', delimiter=',')
+    print data.shape
+    targets = data[:, -1].flatten() - 1
+    print np.unique(targets)
+    print targets.shape
+    data = data[:, :-1]
+    print data.shape
+    min_max_scaler = preprocessing.MinMaxScaler()
+    X_train_minmax = min_max_scaler.fit_transform(data)
+    return X_train_minmax, targets
+
+
 def Test():
     # Movement_libras test
     # dataSet, target = loadMovement_libras()
@@ -362,7 +485,7 @@ def Test():
 
     # dataSet, target = loadIsolet()
 
-    dataSet, target = load_spam_base()
+    dataSet, target = load_sat()
     print dataSet
     print target
     print (dataSet.shape)
