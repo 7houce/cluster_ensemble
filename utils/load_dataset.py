@@ -11,6 +11,7 @@ from scipy.sparse import coo_matrix
 robot_label_mapper = {'normal': 0, 'collision': 1, 'obstruction': 2, 'fr_collision': 3}
 robot2_label_mapper = {'normal': 0, 'front_col': 1, 'back_col': 2, 'left_col': 3, 'right_col': 4}
 robot4_label_mapper = {'normal': 0, 'collision': 1, 'obstruction': 2}
+segmentation_mapper = {'GRASS': 0 ,'PATH': 1, 'WINDOW': 2, 'CEMENT': 3, 'FOLIAGE': 4, 'SKY': 5, 'BRICKFACE': 6}
 iono_label_mapper = {'g': 0, 'b': 1}
 
 
@@ -154,6 +155,41 @@ def load_robot_execution(filename):
             index = 1
             row = []
     return dataSet, target
+
+
+def load_segmentation(normalized=True):
+    target = []
+    dataset = []
+    fr = open('UCI Data/segmentation/segmentation.txt')
+    for line in fr.readlines():
+        curLine = line.strip().split(',')
+        target.append(segmentation_mapper[curLine[0]])
+        fltline = map(float, curLine[1:])
+        dataset.append(fltline)
+    dataset = np.array(dataset)
+    target = np.array(target)
+    if normalized:
+        min_max_scaler = preprocessing.MinMaxScaler()
+        dataset = min_max_scaler.fit_transform(dataset)
+    return dataset, target
+
+
+def load_wdbc(normalized=True):
+    target = []
+    dataset = []
+    fr = open('UCI Data/WDBC/wdbc.data.txt')
+    for line in fr.readlines():
+        curLine = line.strip().split(',')
+        curLine = curLine[1:]
+        target.append(0 if curLine[0] == 'B' else 1)
+        fltline = map(float, curLine[1:])
+        dataset.append(fltline)
+    dataset = np.array(dataset)
+    target = np.array(target)
+    if normalized:
+        min_max_scaler = preprocessing.MinMaxScaler()
+        dataset = min_max_scaler.fit_transform(dataset)
+    return dataset, target
 
 
 def loadRobotExecution_1():
