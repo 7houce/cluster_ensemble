@@ -495,6 +495,85 @@ def load_covtype():
     return X_train_minmax, targets
 
 
+def load_9_Tumors():
+    data = sio.loadmat('UCI Data/Gems/9_Tumors.mat')
+    fea = data['data']
+    labels = fea[:, 0]
+    fea = fea[:, 1:]
+    return fea, labels
+
+
+def load_11_Tumors():
+    data = sio.loadmat('UCI Data/Gems/11_Tumors.mat')
+    fea = data['data']
+    labels = fea[:, 0]
+    fea = fea[:, 1:]
+    return fea, labels
+
+
+def load_14_Tumors():
+    data = sio.loadmat('UCI Data/Gems/14_Tumors.mat')
+    fea = data['data']
+    labels = fea[:, 0]
+    fea = fea[:, 1:]
+    return fea, labels
+
+
+def load_Brain_Tumor1():
+    data = sio.loadmat('UCI Data/Gems/Brain_Tumor1.mat')
+    fea = data['data']
+    labels = fea[:, 0]
+    fea = fea[:, 1:]
+    return fea, labels
+
+
+def load_DLBCL():
+    data = sio.loadmat('UCI Data/Gems/DLBCL.mat')
+    fea = data['data']
+    labels = fea[:, 0]
+    fea = fea[:, 1:]
+    return fea, labels
+
+
+def load_Leukemia1():
+    data = sio.loadmat('UCI Data/Gems/Leukemia1.mat')
+    fea = data['data']
+    labels = fea[:, 0]
+    fea = fea[:, 1:]
+    return fea, labels
+
+
+def load_Leukemia2():
+    data = sio.loadmat('UCI Data/Gems/Leukemia2.mat')
+    fea = data['data']
+    labels = fea[:, 0]
+    fea = fea[:, 1:]
+    return fea, labels
+
+
+def load_Lung_Cancer():
+    data = sio.loadmat('UCI Data/Gems/Lung_Cancer.mat')
+    fea = data['data']
+    labels = fea[:, 0]
+    fea = fea[:, 1:]
+    return fea, labels
+
+
+def load_Prostate_Tumor():
+    data = sio.loadmat('UCI Data/Gems/Prostate_Tumor.mat')
+    fea = data['data']
+    labels = fea[:, 0]
+    fea = fea[:, 1:]
+    return fea, labels
+
+
+def load_SRBCT():
+    data = sio.loadmat('UCI Data/Gems/SRBCT.mat')
+    fea = data['data']
+    labels = fea[:, 0]
+    fea = fea[:, 1:]
+    return fea, labels
+
 def Test():
     # Movement_libras test
     # dataSet, target = loadMovement_libras()
