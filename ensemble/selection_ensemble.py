@@ -1,9 +1,17 @@
 from __future__ import print_function
 import numpy as np
-from ensemble import Cluster_Ensembles as ce
+import ensemble.Cluster_Ensembles as ce
 import evaluation.Metrics as Metrics
 from utils import io_func
 from sklearn import preprocessing
+import ensemble.spectral_ensemble as spec
+
+_default_ensemble_methods = ['CSPA', 'Spectral']
+
+_ensemble_method = {'CSPA': ce.cluster_ensembles_CSPAONLY,
+                    'HGPA': ce.cluster_ensembles_HGPAONLY,
+                    'MCLA': ce.cluster_ensembles_MCLAONLY,
+                    'Spectral': spec.spectral_ensemble}
 
 
 def k_selection_ensemble(labels, k_threshold, logger, weighted=False,
@@ -194,3 +202,37 @@ def batch_do_consistency_selection_for_library(library_folder, library_name, con
         logger.debug('------------------------->>>>>> END OF THIS PARAM <<<<<<-------------------------------')
     logger.debug('===========================================================================================')
     return
+
+
+def _expected_consistency_selection(labels, mlset, nlset, cons_type='', ease_factor=1):
+    n_solutions = labels.shape[0]
+    k_values = []
+    cons = []
+    final_idx = np.array([False] * n_solutions)
+    for label in labels:
+        cons.append(Metrics.consistency(label, mlset, nlset, cons_type=cons_type))
+        k_values.append(len(np.unique(label)))
+    cons = np.array(cons)
+    k_values = np.array(k_values, dtype=int)
+    possible_k = np.unique(k_values)
+    for k in possible_k:
+        mean_value = np.mean(cons[k_values == k])
+        idx = np.logical_and(cons >= mean_value * ease_factor, k_values == k)
+        final_idx = np.logical_or(final_idx, idx)
+    return labels[final_idx]
+
+
+def expected_consistency_selection_ensemble(labels, class_num, target, mlset, nlset, cons_type='must',
+                                            ensemble_methods=_default_ensemble_methods, ease_factor=1):
+    selected_labels = _expected_consistency_selection(labels, mlset, nlset, cons_type=cons_type, ease_factor=ease_factor)
+    retVals = []
+    retVals.append(ease_factor)
+    retVals.append(selected_labels.shape[0])
+    print('[INFO] Selected Solutions:'+str(selected_labels.shape[0]))
+    for method in ensemble_methods:
+        ensemble_labels = _ensemble_method[method](selected_labels, N_clusters_max=class_num)
+        ensemble_nmi = Metrics.normalized_max_mutual_info_score(ensemble_labels, target)
+        retVals.append(ensemble_nmi)
+        print('[INFO] Ensemble Method:'+method)
+        print('[INFO] Performance:'+str(ensemble_nmi))
+    return retVals

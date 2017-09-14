@@ -551,7 +551,8 @@ def do_7th_weighted_ensemble_for_library(library_folder, library_name, class_num
         mean_value = np.mean(cons[k_values == k])
         expected_cons[k] = mean_value
     for i in range(0, labels.shape[0]):
-        con_clustering[i] /= expected_cons[k_values[i]] * internals[i]
+        con_clustering[i] /= expected_cons[k_values[i]]
+        con_clustering[i] *= internals[i]
     if scale:
         scaler = preprocessing.MinMaxScaler()
         con_clustering = scaler.fit_transform(np.array(con_clustering))
