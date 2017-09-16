@@ -336,7 +336,10 @@ def _labels_inertia_precompute_dense(X, x_squared_norms, centers, distances, ml=
                                 mindist[j] = all_distances[index][j]
                     counter += 1
                 if not found_cluster:
-                    raise ValueError('[COP-KMEANS]: could not do clustering!')
+                    # if no suitable clusters could be found according to the constraints
+                    # this sample will be assigned to the closest cluster
+                    labels[sample] = closest_clusters[0]
+                    mindist[sample] = all_distances[0][sample]
 
     # original implementation of k-means, assign samples for each cluster
     # for center_id in range(k):
