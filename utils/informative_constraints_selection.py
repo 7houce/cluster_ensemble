@@ -58,6 +58,6 @@ def generate_informative_cl_set(data, target, dataset_name, n_nbor=10, nn_algori
     :return:
     """
     constraints_set = get_cannot_link_from_nn(data, target, n_nbor=n_nbor, nn_algorithm=nn_algorithm)
-    ioutil.store_constraints(_default_constraints_folder + dataset_name + '_informative_' + str(n_nbor),
+    ioutil.store_constraints(_default_constraints_folder + dataset_name + '_informative_constraints.txt',
                              [], constraints_set)
     return
