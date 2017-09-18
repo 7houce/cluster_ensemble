@@ -310,6 +310,7 @@ class ConstrainedClustering(object):
 
 class E2CP(ConstrainedClustering):
     """Exhaustive and efficient constraint propagation by Lu
+    aaaa
     """
 
     def __init__(self, k_E2CP=15, alpha=0.6, **kwargs):
@@ -350,7 +351,12 @@ class E2CP(ConstrainedClustering):
         # Fbar = Fh / np.max(np.abs(Fh.reshape(-1)))
 
         # approximation of Fbar instead of the propagation iteration.
-        temp = (1 - self.alpha) * (np.eye(Lbar.shape[0]) - self.alpha * Lbar)
+        # original MATLAB code : W = (1- lamda) * inv(eye(N) - lamda*D*K*D)
+        # here, lamda -> alpha, Lbar -> D*W*D
+        temp = (1 - self.alpha) * np.linalg.inv((np.eye(Lbar.shape[0]) - self.alpha * Lbar))
+        # original MATLAB code : F = W*F*W'
+        # W' is conj transpose but not only the transpose of given matrix.
+        # so we use temp.conj().T here instead of W'
         Fbar = np.dot(np.dot(temp, Z), temp.conj().T)
 
         Fbar = Fbar / np.max(np.abs(Fbar.reshape(-1)))
