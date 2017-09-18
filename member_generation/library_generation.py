@@ -4,6 +4,7 @@ Author: Zhijie Lin
 """
 from __future__ import print_function
 import os
+import time
 import numpy as np
 import random as rand
 from sklearn import cluster
@@ -12,9 +13,20 @@ import subspace as sm
 import ensemble.Cluster_Ensembles as ce
 import utils.cluster_visualization as cv
 import utils.io_func as io_func
+import utils.exp_datasets as data_info
 import constrained_methods.efficient_cop_kmeans as eck
 import constrained_methods.constrained_clustering as cc
 import evaluation.Metrics as Metrics
+import evaluation.eval_library as el
+
+_default_FSRs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+_default_SSRs = [0.5, 0.6, 0.7, 0.8, 0.9]
+
+_default_eval_path = 'Results/Eval/'
+_default_constraints_folder = 'Constraints/'
+_default_result_path = 'Results/'
+_default_constraints_postfix = ['constraints_quarter_n', 'constraints_half_n', 'constraints_n', 'constraints_onehalf_n',
+                                'constraints_2n']
 
 _sampling_methods = {'FSRSNN': sm.FSRSNN,
                      'FSRSNC': sm.FSRSNC}
@@ -25,6 +37,12 @@ _constrained_methods = {'E2CP': cc.E2CP,
 _INT_MAX = 2147483647
 
 
+def _get_default_constraints_files(dataset_name, additional_postfix, postfixes=None):
+    use_postfixes = postfixes if postfixes is not None else _default_constraints_postfix
+    return map(lambda x: _default_constraints_folder + dataset_name + '_' + x + additional_postfix + '.txt',
+               use_postfixes)
+
+
 def _get_file_name(dataset_name, n_cluster_lower_bound, n_cluster_upper_bound,
                    feature_sampling, feature_sampling_lower_bound,
                    sample_sampling, sample_sampling_lower_bound,
@@ -32,6 +50,7 @@ def _get_file_name(dataset_name, n_cluster_lower_bound, n_cluster_upper_bound,
     """
     get file name to store the matrix (internal use only)
     """
+    # f_stable
     if not f_stable and feature_sampling > 1.0:
         f_string = str(int(feature_sampling_lower_bound)) + '~' + str(int(feature_sampling))
     elif not f_stable and feature_sampling <= 1.0:
@@ -55,12 +74,90 @@ def _get_file_name(dataset_name, n_cluster_lower_bound, n_cluster_upper_bound,
     return filename
 
 
+def generate_libs_by_sampling_rate(dataset_name, n_members,
+                                   cluster_lower_bound=0, cluster_upper_bound=0,
+                                   fsrs=_default_FSRs, ssrs=_default_SSRs,
+                                   sampling_method='FSRSNC', generate_only=True, do_eval=True,
+                                   path=_default_result_path):
+    """
+    generating a series of libs using different sampling ratio, used for subspace libraries generation.
+
+    :param dataset_name:
+    :param n_members:
+    :param cluster_lower_bound:
+    :param cluster_upper_bound:
+    :param fsrs:
+    :param ssrs:
+    :param sampling_method:
+    :param generate_only:
+    :param do_eval:
+    :param path:
+    :return:
+    """
+    data, target = data_info.dataset[dataset_name]['data']()
+    class_num = data_info.dataset[dataset_name]['k']
+    n_cluster_lower_bound = 5 * class_num if cluster_lower_bound == 0 else cluster_lower_bound
+    n_cluster_upper_bound = 10 * class_num if cluster_upper_bound == 0 else cluster_upper_bound
+    res_names = []
+    for fsr in fsrs:
+        for ssr in ssrs:
+            resname = generate_library(data, target, dataset_name, n_members, class_num,
+                                       n_cluster_lower_bound=n_cluster_lower_bound,
+                                       n_cluster_upper_bound=n_cluster_upper_bound,
+                                       feature_sampling=fsr, sample_sampling=ssr,
+                                       sampling_method=sampling_method, generate_only=generate_only,
+                                       path=path)
+            res_names.append(resname)
+    if do_eval:
+        el.evaluate_libraries_to_file(res_names, path + dataset_name + '/', class_num, target,
+                                      _default_eval_path + dataset_name + time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime(time.time())))
+    return
+
+
+def generate_libs_by_constraints(dataset_name, n_members, postfixes=None, additional_postfix='',
+                                 cluster_lower_bound=0, cluster_upper_bound=0,
+                                 member_method='E2CP', do_eval=True,
+                                 path=_default_result_path):
+    """
+    generating a series of libs using different constraints files, used for semi-supervised clustering.
+
+    :param dataset_name:
+    :param n_members:
+    :param postfixes:
+    :param additional_postfix:
+    :param cluster_lower_bound:
+    :param cluster_upper_bound:
+    :param member_method:
+    :param do_eval:
+    :param path:
+    :return:
+    """
+    data, target = data_info.dataset[dataset_name]['data']()
+    class_num = data_info.dataset[dataset_name]['k']
+    if member_method not in _constrained_methods.keys():
+        raise ValueError('member_method should be one of E2CP or Cop_KMeans')
+    n_cluster_lower_bound = 5 * class_num if cluster_lower_bound == 0 else cluster_lower_bound
+    n_cluster_upper_bound = 10 * class_num if cluster_upper_bound == 0 else cluster_upper_bound
+    constraints_files = _get_default_constraints_files(dataset_name, additional_postfix, postfixes=postfixes)
+    res_names = []
+    for constraints_file in constraints_files:
+        res_name = generate_library(data, target, dataset_name, n_members, class_num,
+                                    n_cluster_lower_bound=n_cluster_lower_bound,
+                                    n_cluster_upper_bound=n_cluster_upper_bound,
+                                    sampling_method=member_method, constraints_file=constraints_file)
+        res_names.append(res_name)
+    if do_eval:
+        el.evaluate_libraries_to_file(res_names, path + dataset_name + '/', class_num, target,
+                                      _default_eval_path + dataset_name + time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime(time.time())))
+    return
+
+
 def generate_library(data, target, dataset_name, n_members, class_num,
                      n_cluster_lower_bound=0, n_cluster_upper_bound=0,
                      feature_sampling=1.0, sample_sampling=0.7,
                      feature_sampling_lower_bound=0.05, sample_sampling_lower_bound=0.1,
                      f_stable_sample=True, s_stable_sample=True,
-                     constraints_file=None, sampling_method='FSRSNC', verbose=True, path='Results/',
+                     constraints_file=None, sampling_method='FSRSNC', verbose=True, path=_default_result_path,
                      metric='nid', manifold_type='MDS', subfolder=True,
                      generate_only=False):
     """
