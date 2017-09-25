@@ -17,8 +17,8 @@ _default_constraints_postfix = ['constraints_quarter_n', 'constraints_half_n', '
                                 'constraints_2n']
 
 
-def _get_default_constraints_files(dataset_name, additional_postfix):
-    return map(lambda x: dataset_name + '_' + x + additional_postfix, _default_constraints_postfix)
+def _get_default_constraints_files(dataset_name, postfix, additional_postfix):
+    return map(lambda x: dataset_name + '_' + x + additional_postfix, postfix)
 
 
 def comparison_methods(dataset_name, constraints_files=None, additional_postfix='', eval_method=None):
@@ -42,9 +42,9 @@ def comparison_methods(dataset_name, constraints_files=None, additional_postfix=
         writer.writerow(['KMeans', str(metrics.normalized_max_mutual_info_score(targets, km.labels_))])
         eval_methods = _default_eval_methods if eval_method is None else eval_method
         if constraints_files is None:
-            filenames = _get_default_constraints_files(dataset_name, additional_postfix)
+            filenames = _get_default_constraints_files(dataset_name, _default_constraints_postfix, additional_postfix)
         else:
-            filenames = constraints_files
+            filenames = _get_default_constraints_files(dataset_name, constraints_files, additional_postfix)
         for filename in filenames:
             ml, cl = io_func.read_constraints(_default_constraints_folder + filename + '.txt')
             for method in eval_methods:

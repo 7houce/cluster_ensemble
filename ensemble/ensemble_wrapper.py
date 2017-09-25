@@ -32,13 +32,13 @@ def do_ensemble_different_constraints(library_name, scale, cons_types=None, cons
     :return:
     """
     dataset_name = library_name.split('_')[0]
-    library_folder = _default_result_folder + dataset_name
+    library_folder = _default_result_folder + dataset_name + '/'
     class_num = exp_data.dataset[dataset_name]['k']
     d, t = exp_data.dataset[dataset_name]['data']()
     scale_tag = '_scaled' if scale else ''
     weighted_cons_types = _default_cons_types if cons_types is None else cons_types
     files_postfix = _default_constraints_postfix if constraints_files_postfix is None else constraints_files_postfix
-    if precomputed_internals is None:
+    if precomputed_internals is not None:
         internals = precomputed_internals
     else:
         internals = im.cal_internal_weights_for_library_as_array(d, library_name)
@@ -56,6 +56,6 @@ def do_ensemble_different_constraints(library_name, scale, cons_types=None, cons
                                                                         cons_type=cons_type, scale=scale)
             performances.append(np.array(performance))
         all_perf = np.hstack(performances)
-        np.savetxt(_default_ensemble_performance_folder + dataset_name + '_' + postfix + scale_tag + '.csv', all_perf,
+        np.savetxt(_default_ensemble_performance_folder + dataset_name + '_' + postfix + scale_tag + additional_postfix + '.csv', all_perf,
                    fmt='%.6f', delimiter=',')
     return

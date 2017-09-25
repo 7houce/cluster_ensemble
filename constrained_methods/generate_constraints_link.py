@@ -19,7 +19,7 @@ def _build_default_amount_array(n_samples):
     return array
 
 
-def generate_closure_constraints_with_portion(targets, dataset_name=None, must_count=0, cannot_count=0,
+def generate_closure_constraints_with_portion(dataset_name, must_count=0, cannot_count=0,
                                               informative=False):
     """
     generate transitive-closure constraints
@@ -38,6 +38,7 @@ def generate_closure_constraints_with_portion(targets, dataset_name=None, must_c
     -------
     :return: must-link constraints and cannot-link constraints in 2 lists.
     """
+    data, targets = exd.dataset[dataset_name]['data']()
     data_len = len(targets)
     clusters = np.unique(np.array(targets))
     n_must_link = [0] * len(clusters)
@@ -48,11 +49,12 @@ def generate_closure_constraints_with_portion(targets, dataset_name=None, must_c
 
     if informative:
         if os.path.isfile(_default_constraints_folder + dataset_name + '_informative_constraints.txt'):
+            print 'informative constraints already existed.'
             _, informative_cl = io_func.read_constraints(
                 _default_constraints_folder + dataset_name + '_informative_constraints.txt')
         else:
-            data, _ = exd.dataset[dataset_name]['data']()
-            ics.generate_informative_cl_set(data, targets, dataset_name)
+            print 'informative constraints not exist, generating...'
+            ics.generate_informative_cl_set(dataset_name)
             _, informative_cl = io_func.read_constraints(
                 _default_constraints_folder + dataset_name + '_informative_constraints.txt')
         informative_len = len(informative_cl)
@@ -105,7 +107,7 @@ def generate_closure_constraints_with_portion(targets, dataset_name=None, must_c
     while cur_count < cannot_count:
         # choose sample randomly
         if informative:
-            cl_tuple = informative_cl[rand.randint(0, informative_len)]
+            cl_tuple = informative_cl[rand.randint(0, informative_len-1)]
             samp1 = cl_tuple[0]
             samp2 = cl_tuple[1]
         else:
@@ -160,8 +162,7 @@ def generate_diff_amount_constraints_wrapper(dataset_name, amount_intervals=None
     if len(amount_array) != len(postfix_array):
         raise ValueError('Length of amount and postfix should be the same.')
     for amount_value, postfix_value in zip(amount_array, postfix_array):
-        ml, cl, _1, _2 = generate_closure_constraints_with_portion(targets,
-                                                                   dataset_name=dataset_name,
+        ml, cl, _1, _2 = generate_closure_constraints_with_portion(dataset_name,
                                                                    must_count=int(amount_value/2),
                                                                    cannot_count=int(amount_value/2),
                                                                    informative=informative)
@@ -170,7 +171,7 @@ def generate_diff_amount_constraints_wrapper(dataset_name, amount_intervals=None
     return
 
 
-def generate_diff_constraints_wrapper(dataset_name, amount=0, n_groups=0, postfix=None):
+def generate_diff_constraints_wrapper(dataset_name, amount=0, n_groups=0, postfix=None, informative=False):
     """
     generate different set of constraints in same amount
 
@@ -178,6 +179,7 @@ def generate_diff_constraints_wrapper(dataset_name, amount=0, n_groups=0, postfi
     :param amount: amount of constraints in one set, default to n
     :param n_groups: number of constraints set, default to 5
     :param postfix: postfix of constraints file, default to 'diff_n'
+    :param informative: informative cannot-link are adopted or not, default to False
     :return:
     """
     data, targets = exd.dataset[dataset_name]['data']()
@@ -186,11 +188,15 @@ def generate_diff_constraints_wrapper(dataset_name, amount=0, n_groups=0, postfi
     amount_value = amount if amount != 0 else int(len(targets) * _default_diff_portion)
     postfix_value = postfix if postfix is not None else _default_diff_portion_name
     groups = n_groups if n_groups != 0 else 5
+    additional_postfix = _default_informative_postfix if informative else ''
     for i in range(1, groups + 1):
-        ml, cl, _1, _2 = generate_closure_constraints_with_portion(targets, must_count=int(amount_value / 2),
-                                                                   cannot_count=int(amount_value / 2))
+        ml, cl, _1, _2 = generate_closure_constraints_with_portion(dataset_name,
+                                                                   must_count=int(amount_value / 2),
+                                                                   cannot_count=int(amount_value / 2),
+                                                                   informative=informative)
         io_func.store_constraints(
-            _default_constraints_folder + dataset_name + '_' + postfix_value + '_' + str(i) + '.txt', ml, cl)
+            _default_constraints_folder + dataset_name + '_' + postfix_value + '_' + str(
+                i) + additional_postfix + '.txt', ml, cl)
     return
 
 
