@@ -10,6 +10,7 @@ _default_constraints_postfix = ['constraints_quarter_n', 'constraints_half_n', '
 _default_constraints_folder = 'Constraints/'
 _default_diff_portion = 1
 _default_diff_portion_name = 'diff_n'
+_default_noise_portion_name = 'noise_n'
 _default_informative_postfix = '_informative'
 
 
@@ -66,7 +67,7 @@ def generate_closure_constraints_with_portion(dataset_name, must_count=0, cannot
     for cluster in clusters:
         n_must_link[cluster] = int(len(targets[targets == cluster]) / float(data_len) * must_count)
 
-    print n_must_link
+    # print n_must_link
 
     def add_both(d, i, j, ls):
         d[i].add(j)
@@ -81,7 +82,7 @@ def generate_closure_constraints_with_portion(dataset_name, must_count=0, cannot
     for cluster in clusters:
         all_samples = np.where(targets == cluster)
         all_samples = np.squeeze(all_samples)
-        print all_samples
+        # print all_samples
         cur_count = 0
         while cur_count < n_must_link[cluster]:
             selected_sample = np.random.choice(all_samples, 2)
@@ -142,6 +143,130 @@ def generate_closure_constraints_with_portion(dataset_name, must_count=0, cannot
     return must_link, cannot_link, ml_graph, cl_graph
 
 
+def generate_constraints_with_noise(dataset_name, must_count=0, cannot_count=0, noise_portion=0.0, informative=False):
+    real_must_count = (1 - noise_portion) * must_count
+    real_cannot_count = (1 - noise_portion) * cannot_count
+    fake_count = noise_portion * (must_count + cannot_count)
+    cur_fake = 0
+    remove_count = 0
+    must_link, cannot_link, ml_graph, cl_graph = generate_closure_constraints_with_portion(dataset_name,
+                                                                                           must_count=real_must_count,
+                                                                                           cannot_count=real_cannot_count,
+                                                                                           informative=informative)
+
+    def add_both(d, i, j, ls):
+        d[i].add(j)
+        d[j].add(i)
+        if i > j:
+            tmp = i
+            i = j
+            j = tmp
+        # make the first sample to be the smaller one in order to filter the duplicates
+        ls.append((i, j))
+
+    def remove_both(d, i, j, ls):
+        d[i].remove(j)
+        d[j].remove(i)
+        if i > j:
+            tmp = i
+            i = j
+            j = tmp
+        # make the first sample to be the smaller one in order to filter the duplicates
+        ls.remove((i, j))
+
+    if noise_portion == 0.0:
+        return must_link, cannot_link, ml_graph, cl_graph
+    else:
+        data, targets = exd.dataset[dataset_name]['data']()
+        data_len = len(targets)
+        while cur_fake < fake_count:
+            samp1 = rand.randint(0, data_len - 1)
+            samp2 = rand.randint(0, data_len - 1)
+            samp1, samp2 = (samp1, samp2) if samp1 < samp2 else (samp2, samp1)
+            if (samp1, samp2) in must_link or (samp1, samp2) in cannot_link or samp1 == samp2:
+                continue
+            else:
+                if targets[samp1] == targets[samp2]:
+                    add_both(cl_graph, samp1, samp2, cannot_link)
+                    cur_fake += 1
+                    for x in ml_graph[samp1]:
+                        if x in ml_graph[samp2]:
+                            remove_both(ml_graph, x, samp2, must_link)
+                            remove_count += 1
+                        if x not in cl_graph[samp2]:
+                            add_both(cl_graph, x, samp2, cannot_link)
+                            cur_fake += 1
+                    for y in ml_graph[samp2]:
+                        if y in ml_graph[samp1]:
+                            remove_both(ml_graph, y, samp1, must_link)
+                            remove_count += 1
+                        if y not in cl_graph[samp1]:
+                            add_both(cl_graph, y, samp1, cannot_link)
+                            cur_fake += 1
+                else:
+                    add_both(ml_graph, samp1, samp2, must_link)
+                    cur_fake += 1
+                    for x in ml_graph[samp1]:
+                        if x in cl_graph[samp2]:
+                            remove_both(cl_graph, x, samp2, cannot_link)
+                            remove_count += 1
+                        if x not in ml_graph[samp2]:
+                            add_both(ml_graph, x, samp2, must_link)
+                            cur_fake += 1
+                    for y in ml_graph[samp2]:
+                        if y in cl_graph[samp1]:
+                            remove_both(cl_graph, y, samp1, cannot_link)
+                            remove_count += 1
+                        if y not in ml_graph[samp1]:
+                            add_both(ml_graph, y, samp1, must_link)
+                            cur_fake += 1
+
+    print dataset_name + '__' + str(cur_fake) + '__' + str(remove_count)
+
+    while remove_count > 0:
+        samp1 = rand.randint(0, data_len - 1)
+        samp2 = rand.randint(0, data_len - 1)
+        samp1, samp2 = (samp1, samp2) if samp1 < samp2 else (samp2, samp1)
+        if (samp1, samp2) in must_link or (samp1, samp2) in cannot_link or samp1 == samp2:
+            continue
+        else:
+            if targets[samp1] == targets[samp2]:
+                add_both(ml_graph, samp1, samp2, must_link)
+                remove_count -= 1
+                for x in ml_graph[samp1]:
+                    if x in cl_graph[samp2]:
+                        remove_both(cl_graph, x, samp2, cannot_link)
+                        remove_count += 1
+                    if x not in ml_graph[samp2]:
+                        add_both(ml_graph, x, samp2, must_link)
+                        remove_count -= 1
+                for y in ml_graph[samp2]:
+                    if y in cl_graph[samp1]:
+                        remove_both(cl_graph, y, samp1, cannot_link)
+                        remove_count += 1
+                    if y not in ml_graph[samp1]:
+                        add_both(ml_graph, y, samp1, must_link)
+                        remove_count -= 1
+            else:
+                add_both(cl_graph, samp1, samp2, cannot_link)
+                remove_count -= 1
+                for x in ml_graph[samp1]:
+                    if x in ml_graph[samp2]:
+                        remove_both(ml_graph, x, samp2, must_link)
+                        remove_count += 1
+                    if x not in cl_graph[samp2]:
+                        add_both(cl_graph, x, samp2, cannot_link)
+                        remove_count -= 1
+                for y in ml_graph[samp2]:
+                    if y in ml_graph[samp1]:
+                        remove_both(ml_graph, y, samp1, must_link)
+                        remove_count += 1
+                    if y not in cl_graph[samp1]:
+                        add_both(cl_graph, y, samp1, cannot_link)
+                        remove_count -= 1
+    return must_link, cannot_link, ml_graph, cl_graph
+
+
 def generate_diff_amount_constraints_wrapper(dataset_name, amount_intervals=None, postfixes=None, informative=False):
     """
     generate constraints of given dataset in different amount
@@ -168,6 +293,40 @@ def generate_diff_amount_constraints_wrapper(dataset_name, amount_intervals=None
                                                                    informative=informative)
         io_func.store_constraints(
             _default_constraints_folder + dataset_name + '_' + postfix_value + additional_postfix + '.txt', ml, cl)
+    return
+
+
+def generate_noise_constraints_wrapper(dataset_name, amount=0, n_groups=0, postfix=None, informative=False,
+                                       noise_range_start=0.0, noise_step_size=0.08):
+    """
+    generate different set of constraints in same amount
+
+    :param dataset_name: name of the dataset, should be defined in exp_datasets
+    :param amount: amount of constraints in one set, default to n
+    :param n_groups: number of constraints set, default to 5
+    :param postfix: postfix of constraints file, default to 'diff_n'
+    :param informative: informative cannot-link are adopted or not, default to False
+    :return:
+    """
+    data, targets = exd.dataset[dataset_name]['data']()
+    if amount != 0 and postfix is None:
+        raise ValueError('Postfix should be given while the amount of constraints is specified.')
+    amount_value = amount if amount != 0 else int(len(targets) * _default_diff_portion)
+    postfix_value = postfix if postfix is not None else _default_noise_portion_name
+    groups = n_groups if n_groups != 0 else 5
+    additional_postfix = _default_informative_postfix if informative else ''
+    print informative
+    cur_noise = noise_range_start
+    for i in range(1, groups + 1):
+        print i
+        print cur_noise
+        ml, cl, _1, _2 = generate_constraints_with_noise(dataset_name,
+                                                         must_count=int(amount_value / 2),
+                                                         cannot_count=int(amount_value / 2),
+                                                         noise_portion=cur_noise,
+                                                         informative=informative)
+        cur_noise += noise_step_size
+        io_func.store_constraints(_default_constraints_folder + dataset_name + '_' + postfix_value + '_' + str(i) + additional_postfix + '.txt', ml, cl)
     return
 
 
@@ -199,6 +358,15 @@ def generate_diff_constraints_wrapper(dataset_name, amount=0, n_groups=0, postfi
                 i) + additional_postfix + '.txt', ml, cl)
     return
 
+
+def test_wrapper(dataset_name):
+    data, targets = exd.dataset[dataset_name]['data']()
+    amount_value = int(len(targets))
+    generate_constraints_with_noise(dataset_name,
+                                    must_count=int(amount_value / 2),
+                                    cannot_count=int(amount_value / 2),
+                                    noise_portion=0.25,
+                                    informative=False)
 
 # def add_noise_to_constraints(ml, cl, target, portion=0):
 #     n_samples = len(target)
