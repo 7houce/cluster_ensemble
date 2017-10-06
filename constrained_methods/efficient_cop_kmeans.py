@@ -530,9 +530,9 @@ def _transitive_closure(ml, nl, n):
             for y in ml_graph[j]:
                 add_both(nl_graph, x, y)
 
-    for i in ml_graph:
-        for j in ml_graph[i]:
-            if j != i and j in nl_graph[i]:
-                raise Exception('inconsistent constraints between %d and %d' % (i, j))
+    # for i in ml_graph:
+    #     for j in ml_graph[i]:
+    #         if j != i and j in nl_graph[i]:
+    #             raise Exception('inconsistent constraints between %d and %d' % (i, j))
 
     return ml_graph, nl_graph
