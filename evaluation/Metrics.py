@@ -1,3 +1,7 @@
+"""
+Metric Calculation for NMI, quality, diversity, consistency ....
+Author: Zhijie Lin
+"""
 from sklearn import metrics
 from sklearn.metrics.cluster import entropy
 from sklearn.metrics.cluster import contingency_matrix

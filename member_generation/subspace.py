@@ -30,7 +30,7 @@ def _euclidean_distance_decider(duv, centers, labels, dsv, type='center'):
 
 def _nearest_neighbor_decider(duv, centers, labels, dsv, type='center'):
     """
-    Decide the labels of unselected samples by k-nearest neighbor
+    Decide the labels of unselected samples by k-nearest neighbor model
     (internal use only)
     """
     neigh = NearestNeighbors(n_neighbors=1)

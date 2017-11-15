@@ -1,11 +1,11 @@
+"""
+Internal clustering evaluation metric
+Author: Zhijie Lin
+"""
 from sklearn import metrics
 import numpy as np
 import time
 import os
-
-"""
-pre-defined internal weight types
-"""
 
 
 def _silhouette(data, label):
@@ -20,20 +20,26 @@ def _zero_one_normalizer(weights):
     return weights
 
 
-avail_weight_types = {'silhouette': _silhouette}
+_avail_weight_types = {'silhouette': _silhouette}
 
 
 def cal_internal_weights_for_library_as_array(data, library_name, normalize=True,
                                               library_path='Results/', weight_type='silhouette'):
     """
     calculate internal evaluation metrics as weights for cluster ensemble
-    return as an numpy array
+    return as a ndarray
 
-    :param data:
-    :param library_name:
-    :param library_path:
-    :param weight_type:
-    :return:
+    Parameters
+    ----------
+    :param data: dataset
+    :param library_name: name of the library (used for storing the internal metrics)
+    :param normalize: normalize result to [0, 1] or not
+    :param library_path: path to store internal evaluation metrics
+    :param weight_type: type of internal evaluation metric, only 'silhouette' supported.
+
+    Return
+    ------
+    :return: internal metrics as a 1d-ndarray
     """
     t1 = time.clock()
     dataset_name = library_name.split('_')[0]
@@ -48,7 +54,7 @@ def cal_internal_weights_for_library_as_array(data, library_name, normalize=True
     print '[Internal Weights] start calculation..'
     weights = []
     for label in labels:
-        weights.append(avail_weight_types[weight_type](data, label))
+        weights.append(_avail_weight_types[weight_type](data, label))
         print '[Internal Weights] one clustering done.'
     weights = np.array(weights)
     np.savetxt(library_path + dataset_name + '/' + library_name + '_internals.txt', weights, fmt='%.8f', delimiter=',')

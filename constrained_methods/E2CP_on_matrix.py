@@ -6,7 +6,16 @@ _k_E2CP = 15
 _alpha = 0.1
 
 
-def fit_constrained(similarity_matrix, ML, CL, n_clusters):
+def e2cp_fit(similarity_matrix, ML, CL, n_clusters):
+    """
+    apply constraint-propagation clustering e2cp on a given matrix.
+
+    :param similarity_matrix: similarity matrix or affinity matrix of the dataset
+    :param ML: must-link constraint set at the format of [[xx, yy], [yy, zz] .... ]
+    :param CL: cannot-link constraint set
+    :param n_clusters: #clusters
+    :return:
+    """
     N = similarity_matrix.shape[0]
 
     nbrs = NearestNeighbors(n_neighbors=_k_E2CP + 1,
@@ -26,6 +35,7 @@ def fit_constrained(similarity_matrix, ML, CL, n_clusters):
     Z[ML[:, 0], ML[:, 1]] = 1
     Z[CL[:, 0], CL[:, 1]] = -1
 
+    # iterative approach
     # Fv = np.zeros(Z.shape)
     # for i in range(50):
     #     Fv = self.alpha * np.dot(Lbar, Fv) + (1 - self.alpha) * Z
@@ -42,6 +52,7 @@ def fit_constrained(similarity_matrix, ML, CL, n_clusters):
 
     Fbar = Fbar / np.max(np.abs(Fbar.reshape(-1)))
 
+    # recover
     Wbar = np.zeros(similarity_matrix)
     mlInd = Fbar >= 0
     Wbar[mlInd] = 1 - (1 - Fbar[mlInd]) * (1 - W[mlInd])

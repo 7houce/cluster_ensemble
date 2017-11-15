@@ -1,14 +1,14 @@
 """
-Generate a clustering library
+generate a library of base clustering, including k-means/constrained methods.
 Author: Zhijie Lin
 """
 from __future__ import print_function
+from sklearn import cluster
+from sklearn import manifold
 import os
 import time
 import numpy as np
 import random as rand
-from sklearn import cluster
-from sklearn import manifold
 import subspace as sm
 import ensemble.Cluster_Ensembles as ce
 import utils.cluster_visualization as cv
@@ -18,15 +18,17 @@ import constrained_methods.efficient_cop_kmeans as eck
 import constrained_methods.constrained_clustering as cc
 import evaluation.Metrics as Metrics
 import evaluation.eval_library as el
+import utils.settings as settings
 
+# from global setting file.
+_default_eval_path = settings.default_eval_path
+_default_constraints_folder = settings.default_constraints_folder
+_default_result_path = settings.default_library_path
+_default_constraints_postfix = settings.default_constraints_folder
+
+# specific default settings.
 _default_FSRs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 _default_SSRs = [0.5, 0.6, 0.7, 0.8, 0.9]
-
-_default_eval_path = 'Results/Eval/'
-_default_constraints_folder = 'Constraints/'
-_default_result_path = 'Results/'
-_default_constraints_postfix = ['constraints_quarter_n', 'constraints_half_n', 'constraints_n', 'constraints_onehalf_n',
-                                'constraints_2n']
 
 _sampling_methods = {'FSRSNN': sm.FSRSNN,
                      'FSRSNC': sm.FSRSNC}
@@ -37,7 +39,12 @@ _constrained_methods = {'E2CP': cc.E2CP,
 _INT_MAX = 2147483647
 
 
-def _get_default_constraints_files(dataset_name, additional_postfix, postfixes=None):
+def _get_constraints_file_names(dataset_name, additional_postfix, postfixes=None):
+    """
+    get names of constraint file.
+    format: [FOLDER_NAME] + [DATASET_NAME] + [COMMON_POSTFIX] + [ADDITIONAL_POSTFIX] + .txt
+    (internal use only)
+    """
     use_postfixes = postfixes if postfixes is not None else _default_constraints_postfix
     return map(lambda x: _default_constraints_folder + dataset_name + '_' + x + additional_postfix + '.txt',
                use_postfixes)
@@ -48,9 +55,12 @@ def _get_file_name(dataset_name, n_cluster_lower_bound, n_cluster_upper_bound,
                    sample_sampling, sample_sampling_lower_bound,
                    n_members, f_stable, s_stable, sampling_method, is_constraint_method=False, constraint_file=None):
     """
-    get file name to store the matrix (internal use only)
+    get file name to store the library (in a matrix)
+    format: [DATASET_NAME] + [RANGE_OF_K] + [FEATURE SAMPLING] +
+            [INSTANCE SAMPLING] + [#MEMBERS] + [METHOD] + *[CONSTRAINT_FILE]
+    (internal use only)
     """
-    # f_stable
+    # feature sampling rate
     if not f_stable and feature_sampling > 1.0:
         f_string = str(int(feature_sampling_lower_bound)) + '~' + str(int(feature_sampling))
     elif not f_stable and feature_sampling <= 1.0:
@@ -60,6 +70,7 @@ def _get_file_name(dataset_name, n_cluster_lower_bound, n_cluster_upper_bound,
     else:
         f_string = str(feature_sampling)
 
+    # instance sampling rate
     if not s_stable and sample_sampling > 1.0:
         s_string = str(int(sample_sampling_lower_bound)) + '~' + str(int(sample_sampling))
     elif not f_stable and feature_sampling <= 1.0:
@@ -68,36 +79,52 @@ def _get_file_name(dataset_name, n_cluster_lower_bound, n_cluster_upper_bound,
         s_string = str(int(sample_sampling))
     else:
         s_string = str(sample_sampling)
+
+    # name of constraint file
     constraint_file_suffix = '' if not is_constraint_method else ('_' + constraint_file.split('Constraints/')[1])
+
+    # final name
     filename = dataset_name + '_' + str(n_cluster_lower_bound) + '-' + str(n_cluster_upper_bound) + '_' + \
                s_string + '_' + f_string + '_' + str(n_members) + '_' + sampling_method + constraint_file_suffix
     return filename
 
 
-def generate_libs_by_sampling_rate(dataset_name, n_members,
-                                   cluster_lower_bound=0, cluster_upper_bound=0,
-                                   fsrs=_default_FSRs, ssrs=_default_SSRs,
-                                   sampling_method='FSRSNC', generate_only=True, do_eval=True,
+def generate_libs_by_sampling_rate(dataset_name,
+                                   n_members,
+                                   cluster_lower_bound=0,
+                                   cluster_upper_bound=0,
+                                   fsrs=_default_FSRs,
+                                   ssrs=_default_SSRs,
+                                   sampling_method='FSRSNC',
+                                   generate_only=True,
+                                   do_eval=True,
                                    path=_default_result_path):
     """
-    generating a series of libs using different sampling ratio, used for subspace libraries generation.
+    generating a series of libs using different sampling ratio
+    used for subspace libraries generation.
 
-    :param dataset_name:
-    :param n_members:
-    :param cluster_lower_bound:
-    :param cluster_upper_bound:
-    :param fsrs:
-    :param ssrs:
-    :param sampling_method:
-    :param generate_only:
-    :param do_eval:
-    :param path:
-    :return:
+    Parameters
+    ----------
+    :param dataset_name: name of the dataset, should be defined in exp_datasets, required
+    :param n_members: #members, in integer, required
+    :param cluster_lower_bound: lower bound of the #clusters, default to 5k
+    :param cluster_upper_bound: upper bound of the #clusters, default to 10k
+    :param fsrs: feature sampling rates (in a list), default : [0.1 .... 0.9]
+    :param ssrs: instance sampling rates (in a list), default : [0.5 ... 1]
+    :param sampling_method: FSRSNN or FSRSNC supported, default : FSRSNC
+    :param generate_only: whether do visualization analysis or not, default to True ( only conduct generation )
+    :param do_eval: do evaluation on generated dataset or not, default to True
+    :param path: place to store the generated libraries, default to 'Result/'
     """
+    # get the dataset and range of k
     data, target = data_info.dataset[dataset_name]['data']()
     class_num = data_info.dataset[dataset_name]['k']
     n_cluster_lower_bound = 5 * class_num if cluster_lower_bound == 0 else cluster_lower_bound
     n_cluster_upper_bound = 10 * class_num if cluster_upper_bound == 0 else cluster_upper_bound
+
+    # generate libraries by invoking "generate_library" iteratively using all possible combination of sampling rates.
+    # if the library is already exist, it will return the name of the library but not generating a new one.
+    # p.s. "exist" means that there is a library file which has a same name. (see function _get_file_name)
     res_names = []
     for fsr in fsrs:
         for ssr in ssrs:
@@ -108,37 +135,55 @@ def generate_libs_by_sampling_rate(dataset_name, n_members,
                                        sampling_method=sampling_method, generate_only=generate_only,
                                        path=path)
             res_names.append(resname)
+
+    # evaluate generated libraries and store the result to a file
+    # evaluation result will be store at _default_eval_path, with the name of the dataset and timestamp.
     if do_eval:
-        el.evaluate_libraries_to_file(res_names, path + dataset_name + '/', class_num, target,
-                                      _default_eval_path + dataset_name + time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime(time.time())))
+        el.evaluate_libraries_to_file(res_names,
+                                      path + dataset_name + '/',
+                                      class_num,
+                                      target,
+                                      _default_eval_path + dataset_name + time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime(time.time())) + '.csv')
     return
 
 
-def generate_libs_by_constraints(dataset_name, n_members, postfixes=None, additional_postfix='',
-                                 cluster_lower_bound=0, cluster_upper_bound=0,
-                                 member_method='E2CP', do_eval=True,
+def generate_libs_by_constraints(dataset_name,
+                                 n_members,
+                                 postfixes=None,
+                                 additional_postfix='',
+                                 cluster_lower_bound=0,
+                                 cluster_upper_bound=0,
+                                 member_method='E2CP',
+                                 do_eval=True,
                                  path=_default_result_path):
     """
-    generating a series of libs using different constraints files, used for semi-supervised clustering.
+    generating a series of libs using different constraints files
+    used for semi-supervised clustering.
 
-    :param dataset_name:
-    :param n_members:
-    :param postfixes:
-    :param additional_postfix:
-    :param cluster_lower_bound:
-    :param cluster_upper_bound:
-    :param member_method:
-    :param do_eval:
-    :param path:
-    :return:
+    Parameters
+    ----------
+    :param dataset_name: name of the dataset, should be defined in exp_datasets, required
+    :param n_members: #members, in integer, required
+    :param postfixes: postfix of constraint files, default is [constraints_quarter_n, constraints_half_n ........]
+    :param additional_postfix: additional postfix of constraint files, default is empty.
+    :param cluster_lower_bound: lower bound of the #clusters, default to 5k
+    :param cluster_upper_bound: upper bound of the #clusters, default to 10k
+    :param member_method: 'Cop_KMeans' and 'E2CP' supported, default to 'E2CP'
+    :param do_eval: do evaluation on generated dataset or not, default to True
+    :param path: place to store the generated libraries, default to 'Result/'
     """
+    # get the dataset and range of k
     data, target = data_info.dataset[dataset_name]['data']()
     class_num = data_info.dataset[dataset_name]['k']
-    if member_method not in _constrained_methods.keys():
-        raise ValueError('member_method should be one of E2CP or Cop_KMeans')
     n_cluster_lower_bound = 5 * class_num if cluster_lower_bound == 0 else cluster_lower_bound
     n_cluster_upper_bound = 10 * class_num if cluster_upper_bound == 0 else cluster_upper_bound
-    constraints_files = _get_default_constraints_files(dataset_name, additional_postfix, postfixes=postfixes)
+
+    # get name of constraint files used.
+    constraints_files = _get_constraints_file_names(dataset_name, additional_postfix, postfixes=postfixes)
+
+    # generate libraries by invoking "generate_library" iteratively using all constraint files.
+    # if the library is already exist, it will return the name of the library but not generating a new one.
+    # p.s. "exist" means that there is a library file which has a same name. (see function _get_file_name)
     res_names = []
     for constraints_file in constraints_files:
         res_name = generate_library(data, target, dataset_name, n_members, class_num,
@@ -146,9 +191,13 @@ def generate_libs_by_constraints(dataset_name, n_members, postfixes=None, additi
                                     n_cluster_upper_bound=n_cluster_upper_bound,
                                     sampling_method=member_method, constraints_file=constraints_file)
         res_names.append(res_name)
+
+    # evaluate generated libraries and store the result to a file
+    # evaluation result will be store at _default_eval_path, with the name of the dataset and timestamp.
     if do_eval:
         el.evaluate_libraries_to_file(res_names, path + dataset_name + '/', class_num, target,
-                                      _default_eval_path + dataset_name + time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime(time.time())))
+                                      _default_eval_path + dataset_name + time.strftime('%Y-%m-%d_%H_%M_%S',
+                                      time.localtime(time.time())) + '_' + member_method + '_' + additional_postfix + '.csv')
     return
 
 
@@ -159,30 +208,36 @@ def generate_library(data, target, dataset_name, n_members, class_num,
                      f_stable_sample=True, s_stable_sample=True,
                      constraints_file=None, sampling_method='FSRSNC', verbose=True, path=_default_result_path,
                      metric='nid', manifold_type='MDS', subfolder=True,
-                     generate_only=False):
+                     generate_only=True):
     """
+    generate a single library of ensemble member.
 
-    :param data:
-    :param target:
-    :param dataset_name:
-    :param n_members:
-    :param class_num:
-    :param n_cluster_lower_bound:
-    :param n_cluster_upper_bound:
-    :param feature_sampling:
-    :param sample_sampling:
-    :param feature_sampling_lower_bound:
-    :param sample_sampling_lower_bound:
-    :param f_stable_sample:
-    :param s_stable_sample:
-    :param constraints_file:
-    :param sampling_method:
-    :param verbose:
-    :param path:
-    :param metric:
-    :param manifold_type:
-    :param subfolder:
-    :return:
+    Parameters
+    ----------
+    :param data: dataset in a ndarray
+    :param target: target in a ndarray or list
+    :param dataset_name: name of dataset
+    :param n_members: #clusters
+    :param class_num: #real_class
+    :param n_cluster_lower_bound: lower bound of k
+    :param n_cluster_upper_bound: upper bound of k
+    :param feature_sampling: fixed sampling rate of feature, or upper bound if not stable
+    :param sample_sampling:  fixed sampling rate of instances, or upper bound if not stable
+    :param feature_sampling_lower_bound: lower bound of sampling rate of feature, only available if not stable
+    :param sample_sampling_lower_bound: lower bound of sampling rate of instance, only available if not stable
+    :param f_stable_sample: stable feature sampling or not
+    :param s_stable_sample: stable instance sampling or not
+    :param constraints_file: name of constraint file, only available when
+    :param sampling_method: 'FSRSNC' and 'FSRSNN' supported
+    :param verbose: print debug info.
+    :param path: path to store the library
+    :param metric: used for visualization only
+    :param manifold_type: used for visualization only
+    :param subfolder: save library in a separated sub-folder or not.
+
+    Return
+    ------
+    :return: name of the library generated (the library itself will be stored as a file)
     """
     print('start generating library for dataset:' + dataset_name)
 
@@ -240,10 +295,10 @@ def generate_library(data, target, dataset_name, n_members, class_num,
     # we won't generate the library with same sampling rate and size if existing
     if os.path.isfile(savepath + filename + '.res'):
         print ('[Library Generation] : library already exists.')
-        return
+        return filename+'.res'
     elif os.path.isfile(savepath + filename + '_pure.res'):
         print ('[Library Generation] : corresponding pure library already exists.')
-        return
+        return filename+'_pure.res'
 
     tag = True
 

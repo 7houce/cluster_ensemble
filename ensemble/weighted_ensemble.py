@@ -31,90 +31,6 @@ def _activate_func_2(value):
     return 1/(1+np.exp(adjusted_value))
 
 
-def _get_weights(labels, mlset, nlset, cons_type, scale, weights_type=1):
-    """
-    Get weights according to the type given.
-    (internal use only)
-    """
-    con_per_cluster = []
-    con_clustering = []
-
-    if weights_type == 1:
-        """
-        weights_type 1
-        naive weight solution : use 0-1 consistency for both clustering and cluster level directly
-        """
-        for label in labels:
-            con_per_cluster.append(Metrics.consistency_per_cluster(label, mlset, nlset, cons_type=cons_type))
-        for label in labels:
-            con_clustering.append(Metrics.consistency(label, mlset, nlset, cons_type=cons_type))
-        if scale:
-            scaler = preprocessing.MinMaxScaler()
-            con_clustering = scaler.fit_transform(np.array(con_clustering))
-
-    elif weights_type == 2:
-        """
-        weights_type 2
-        Use the 'fulfillment ratio' of expected consistency as clustering-level weights
-        """
-        k_values = []
-        expected_cons = {}
-        for label in labels:
-            con_per_cluster.append(Metrics.consistency_per_cluster(label, mlset, nlset, cons_type=cons_type))
-        for label in labels:
-            con_clustering.append(Metrics.consistency(label, mlset, nlset, cons_type=cons_type))
-            k_values.append(len(np.unique(label)))
-        k_values = np.array(k_values, dtype=int)
-        possible_k = np.unique(k_values)
-        cons = np.array(con_clustering)
-        for k in possible_k:
-            mean_value = np.mean(cons[k_values == k])
-            expected_cons[k] = mean_value
-        for i in range(0, labels.shape[0]):
-            con_clustering[i] /= expected_cons[k_values[i]]
-        if scale:
-            scaler = preprocessing.MinMaxScaler()
-            con_clustering = scaler.fit_transform(np.array(con_clustering))
-
-    elif weights_type == 3:
-        """
-        weights_type 3:
-        Apply activate function on clustering-level consistency
-        """
-        for label in labels:
-            con_per_cluster.append(Metrics.consistency_per_cluster(label, mlset, nlset, cons_type=cons_type))
-        for label in labels:
-            con_clustering.append(Metrics.consistency(label, mlset, nlset, cons_type=cons_type))
-
-        if scale:
-            scaler = preprocessing.MinMaxScaler()
-            con_clustering = scaler.fit_transform(np.array(con_clustering))
-            for i in range(0, len(con_clustering)):
-                con_clustering[i] = _activate_func(con_clustering[i])
-        else:
-            for i in range(0, len(con_clustering)):
-                con_clustering[i] = _activate_func(con_clustering[i])
-
-    elif weights_type == 4:
-        """
-        weights_type 4:
-        Apply activate function on cluster-level consistency
-        """
-        for label in labels:
-            d = Metrics.consistency_per_cluster(label, mlset, nlset, cons_type=cons_type)
-            for k in d:
-                d[k] = _activate_func(d[k])
-            con_per_cluster.append(d)
-        for label in labels:
-            con_clustering.append(Metrics.consistency(label, mlset, nlset, cons_type=cons_type))
-
-        if scale:
-            scaler = preprocessing.MinMaxScaler()
-            con_clustering = scaler.fit_transform(np.array(con_clustering))
-
-    return con_clustering, con_per_cluster
-
-
 def do_weighted_ensemble_for_library(library_folder, library_name, class_num, target,
                                      constraint_file, logger, alphas, cons_type='both',
                                      ensemble_method=_default_ensemble_method, scale=False):
@@ -549,6 +465,8 @@ def do_7th_weighted_ensemble_for_library(library_folder, library_name, class_num
     cons = np.array(con_clustering)
     for k in possible_k:
         mean_value = np.mean(cons[k_values == k])
+        if mean_value == 0:
+            mean_value = 1
         expected_cons[k] = mean_value
     for i in range(0, labels.shape[0]):
         con_clustering[i] /= expected_cons[k_values[i]]

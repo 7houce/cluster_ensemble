@@ -1,3 +1,7 @@
+"""
+IO-support
+Author: Zhijie Lin
+"""
 import numpy as np
 
 _delimiter = ','

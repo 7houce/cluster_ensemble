@@ -1,8 +1,8 @@
 import time
 import csv
-import utils.exp_datasets as exd
 from sklearn import cluster
 import numpy as np
+import utils.exp_datasets as exd
 import evaluation.Metrics as metrics
 import constrained_methods.efficient_cop_kmeans as eck
 import constrained_methods.constrained_clustering as cc
@@ -25,13 +25,15 @@ def comparison_methods(dataset_name, constraints_files=None, additional_postfix=
     """
     get the performance of comparison methods.
 
+    Parameters
+    ----------
     :param dataset_name:
     :param constraints_files:
     :param additional_postfix:
     :param eval_method:
-    :return:
     """
-    filename = _default_eval_path + dataset_name + '_' + time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime(time.time())) + '.csv'
+    filename = _default_eval_path + dataset_name + '_' + time.strftime('%Y-%m-%d_%H_%M_%S',
+                                                                       time.localtime(time.time())) + '.csv'
     with open(filename, 'wb') as f:
         writer = csv.writer(f)
         data, targets = exd.dataset[dataset_name]['data']()

@@ -1,3 +1,6 @@
+"""
+dataset used for experiment
+"""
 import utils.load_dataset as ld
 
 dataset = {
@@ -11,5 +14,6 @@ dataset = {
     'SRBCT': {'k': 4, 'data': ld.load_SRBCT},
     'LungCancer': {'k': 4, 'data': ld.load_Lung_Cancer},
     'Leukemia1': {'k': 3, 'data': ld.load_Leukemia1},
-    'Leukemia2': {'k': 3, 'data': ld.load_Leukemia2}
+    'Leukemia2': {'k': 3, 'data': ld.load_Leukemia2},
+    'Iris': {'k': 3, 'data': ld.load_iris}
 }
