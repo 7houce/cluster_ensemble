@@ -22,7 +22,7 @@ def _euclidean_distance_decider(duv, centers, labels, dsv, type='center'):
         all_distances = euclidean_distances(centers, duv, squared=True)
     else:
         all_distances = euclidean_distances(dsv, duv, squared=True)
-    for i in range(0, len(duv)):
+    for i in range(0, duv.shape[0]):
         min_index = np.argmin(all_distances[:, i])
         target_unselected_pred.append(min_index if type == 'center' else labels[min_index])
     return target_unselected_pred
@@ -291,7 +291,7 @@ def FSRSNC(dataSet, target, r_clusters=3, r_state=50, fsr=0.7, ssr=0.7, decider=
     elif 0 < fsr <= 1.0:
         feature_left_amount = int(fsr * dataSet.shape[1])
     else:
-        raise ValueError('FSRSNN : fsr should be a positive value!')
+        raise ValueError('FSRSNC : fsr should be a positive value!')
 
     # convert ssr to absolute number
     if ssr > 1.0:
@@ -299,18 +299,24 @@ def FSRSNC(dataSet, target, r_clusters=3, r_state=50, fsr=0.7, ssr=0.7, decider=
     elif 0 < ssr <= 1.0:
         sample_left_amount = int(ssr * dataSet.shape[0])
     else:
-        raise ValueError('FSRSNN : ssr should be a positive value!')
+        raise ValueError('FSRSNC : ssr should be a positive value!')
 
     # perform feature sampling
     feature_sampled_data = feature_sampling(dataSet, feature_left_amount)
     print ('After feature Sampling,there remains %d features.' % feature_sampled_data.shape[1])
 
+    numbers = np.array(range(1, feature_sampled_data.shape[0]+1))
+
     # perform instance sampling
     # we use pandas's index to merge the unselected instances after
-    feature_sampled_data = pd.DataFrame(feature_sampled_data)
-    target = pd.DataFrame(target)
+    # feature_sampled_data = pd.DataFrame(feature_sampled_data)
+    # target = pd.DataFrame(target)
+    # data_selected, data_unselected, \
+    # target_selected, target_unselected = train_test_split(feature_sampled_data, target,
+    #                                                       train_size=sample_left_amount,
+    #                                                       random_state=r_state)
     data_selected, data_unselected, \
-    target_selected, target_unselected = train_test_split(feature_sampled_data, target,
+    number_selected, number_unselected = train_test_split(feature_sampled_data, numbers,
                                                           train_size=sample_left_amount,
                                                           random_state=r_state)
     t2 = time.clock()
@@ -318,26 +324,38 @@ def FSRSNC(dataSet, target, r_clusters=3, r_state=50, fsr=0.7, ssr=0.7, decider=
 
     t1 = time.clock()
     # perform K-Means on double-sampled dataset with given k
-    if r_clusters >= len(data_selected):
-        r_clusters = len(data_selected) / 2
+    if r_clusters >= data_selected.shape[0]:
+        r_clusters = data_selected.shape[0] / 2
     clf = cluster.KMeans(n_clusters=r_clusters, n_init=1)
     clf.fit(data_selected)
-    result_selected = target_selected.copy()
-    result_selected[1] = clf.labels_
+
+    # result_selected = target_selected.copy()
+    # result_selected[1] = clf.labels_
     t2 = time.clock()
     clustering_time = t2 - t1
 
     t1 = time.clock()
     # determine the labels of those unselected by NN strategy
-    duv = np.array(data_unselected)
-    dsv = np.array(data_selected)
+    duv = data_unselected
+    dsv = data_selected
+    # print (data_unselected.shape)
+    # print (data_selected.shape)
+    # print (type(duv))
+    # print (duv.shape)
+    # print (type(dsv))
+    # print (dsv.shape)
+    # print (type(clf.cluster_centers_))
     target_unselected_pred = _decider[decider](duv, clf.cluster_centers_, clf.labels_, dsv, type='center')
 
     # merge the unselected instances with selected instances in true order
-    result_unselected = target_unselected.copy()
-    result_unselected[1] = np.array(target_unselected_pred)
-    result = pd.concat([result_selected, result_unselected])
-    result = result.reindex(range(0, len(target)))
+    # result_unselected = target_unselected.copy()
+    # result_unselected[1] = np.array(target_unselected_pred)
+    # result = pd.concat([result_selected, result_unselected])
+    # result = result.reindex(range(0, len(target)))
+    reunion_numbers = np.hstack([number_selected, number_unselected])
+    predicted_labels = np.hstack([clf.labels_, target_unselected_pred])
+    # print predicted_labels[np.argsort(reunion_numbers)]
+
     t2 = time.clock()
     nn_time = t2 - t1
 
@@ -349,4 +367,5 @@ def FSRSNC(dataSet, target, r_clusters=3, r_state=50, fsr=0.7, ssr=0.7, decider=
     print ('Data Unselected Matrix Size = ' + str(duv.shape))
     print ('=================================================================')
 
-    return result[1].values
+    return predicted_labels[np.argsort(reunion_numbers)]
+    # return result[1].values

@@ -240,6 +240,84 @@ def consistency(label, mlset, nlset, cons_type='both'):
         return float(nlcount + mlcount) / setlength
 
 
+def _extract_keys(dic1, dic2, zero=True):
+    llist = []
+    if zero:
+        for k, v in dic2.items():
+            llist.append(v)
+        return llist
+    else:
+        for k, v in dic1.items():
+            if v != 0:
+                llist.append(dic2[k])
+        return llist
+
+
+def _get_g_gamma(cluster_instances, cluster_constraints, n_constraints, n_instances, gamma=0.5):
+    expected_constraints = (float(cluster_instances) / n_instances) * n_constraints
+    if cluster_constraints <= expected_constraints:
+        return cluster_constraints / expected_constraints * gamma
+    else:
+        return gamma + (1 - gamma) * (cluster_constraints - expected_constraints) / (n_constraints - expected_constraints)
+
+
+def consistency_per_cluster_efficient(label, mlset, nlset, cons_type='both'):
+    n_clusters = len(np.unique(label))
+    satisfy_ML = [0] * n_clusters
+    satisfy_CL = [0] * n_clusters
+    count_ML = [0] * n_clusters
+    count_CL = [0] * n_clusters
+    consistencies = {}
+    cluster_constraints = {}
+    for obj1, obj2 in mlset:
+        if label[obj1] != label[obj2]:
+            count_ML[label[obj1]] += 1
+            count_ML[label[obj2]] += 1
+        else:
+            count_ML[label[obj1]] += 1
+            satisfy_ML[label[obj1]] += 1
+    for obj1, obj2 in nlset:
+        if label[obj1] != label[obj2]:
+            count_CL[label[obj1]] += 1
+            count_CL[label[obj2]] += 1
+            satisfy_CL[label[obj1]] += 1
+            satisfy_CL[label[obj2]] += 1
+    # print type(n_clusters)
+    for i in range(0, n_clusters):
+        if cons_type == 'both':
+            cluster_constraints_i = count_CL[i] + count_ML[i]
+            cluster_satisfy = satisfy_CL[i] + satisfy_ML[i]
+            weight_i = float(cluster_satisfy) / cluster_constraints_i if cluster_constraints_i > 0 else 1
+            # gamma_i = _get_g_gamma(len(label[label == i]), cluster_constraints_i, n_ml + n_cl, n_instances, gamma=gamma)
+            consistencies[i] = weight_i
+            cluster_constraints[i] = cluster_constraints_i
+            # gammas[i] = gamma_i
+        elif cons_type == 'must':
+            cluster_constraints_i = count_ML[i]
+            cluster_satisfy = satisfy_ML[i]
+            weight_i = float(cluster_satisfy) / cluster_constraints_i if cluster_constraints_i > 0 else 1
+            # gamma_i = _get_g_gamma(len(label[label == i]), cluster_constraints_i, n_ml, n_instances, gamma=gamma)
+            consistencies[i] = weight_i
+            cluster_constraints[i] = cluster_constraints_i
+            # gammas[i] = gamma_i
+    # if cons_type == 'both':
+    #     values = np.array(_extract_keys(cluster_constraints, consistencies))
+    #     values = values[values != 0.0]
+    #     values = values[values != 1.0]
+    #     lowerbound = np.percentile(values, 25)
+    #     upperbound = np.percentile(values, 75)
+    #     if upperbound != lowerbound:
+    #         for k in consistencies:
+    #             if consistencies[k] > upperbound:
+    #                 consistencies[k] = 1.0
+    #             elif consistencies[k] < lowerbound:
+    #                 consistencies[k] = 0.0
+    #             else:
+    #                 consistencies[k] = (consistencies[k] - lowerbound) / (upperbound - lowerbound)
+
+    return consistencies, cluster_constraints
+
+
 def consistency_per_cluster(label, mlset, nlset, cons_type='both'):
     """
     calculate consistencies of each cluster in a given clustering

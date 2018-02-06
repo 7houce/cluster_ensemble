@@ -332,6 +332,12 @@ class E2CP(ConstrainedClustering):
         W[ind1, ind2] = self.affMat[ind1, ind2] / (np.sqrt(self.affMat[ind1, ind1]) * np.sqrt(self.affMat[ind2, ind2]))
 
         W = (W + W.transpose()) / 2
+        print W
+        print W.shape
+        wsum = np.sum(W, axis=1)
+        print wsum
+        print wsum.shape
+        print wsum ** -0.5
         Dsqrt = np.diag(np.sum(W, axis=1) ** -0.5)
         Lbar = np.dot(np.dot(Dsqrt, W), Dsqrt)
         # print Lbar.shape

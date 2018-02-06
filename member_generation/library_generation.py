@@ -24,7 +24,7 @@ import utils.settings as settings
 _default_eval_path = settings.default_eval_path
 _default_constraints_folder = settings.default_constraints_folder
 _default_result_path = settings.default_library_path
-_default_constraints_postfix = settings.default_constraints_folder
+_default_constraints_postfix = settings.default_constraints_postfix
 
 # specific default settings.
 _default_FSRs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
@@ -180,6 +180,7 @@ def generate_libs_by_constraints(dataset_name,
 
     # get name of constraint files used.
     constraints_files = _get_constraints_file_names(dataset_name, additional_postfix, postfixes=postfixes)
+    # print(constraints_files)
 
     # generate libraries by invoking "generate_library" iteratively using all constraint files.
     # if the library is already exist, it will return the name of the library but not generating a new one.

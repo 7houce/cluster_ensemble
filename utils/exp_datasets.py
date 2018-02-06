@@ -15,5 +15,11 @@ dataset = {
     'LungCancer': {'k': 4, 'data': ld.load_Lung_Cancer},
     'Leukemia1': {'k': 3, 'data': ld.load_Leukemia1},
     'Leukemia2': {'k': 3, 'data': ld.load_Leukemia2},
-    'Iris': {'k': 3, 'data': ld.load_iris}
+    'Iris': {'k': 3, 'data': ld.load_iris},
+    'Wap': {'k': 20, 'data': ld.load_wap},
+    'k1b': {'k': 6, 'data': ld.load_k1b},
+    'hitech': {'k': 6, 'data': ld.load_hitech},
+    're0': {'k': 13, 'data': ld.load_re0},
+    're1': {'k': 25, 'data': ld.load_re1},
+    'waveform': {'k': 3, 'data': ld.load_waveform}
 }

@@ -223,6 +223,38 @@ def build_weighted_hypergraph_adjacency(cluster_runs, clustering_weights, cluste
     return hypergraph_adjacency
 
 
+def build_weighted_hypergraph_adjacency_extended(cluster_runs, clustering_weights, cluster_level_weights, alpha, internal):
+    """Return the adjacency matrix to a hypergraph, in sparse matrix representation.
+
+    Parameters
+    ----------
+    cluster_runs : array of shape (n_partitions, n_samples)
+    clustering_weights : weights of cluster_runs in a list
+
+    Returns
+    -------
+    hypergraph_adjacency : compressed sparse row matrix
+        Represents the hypergraph associated with an ensemble of partitions,
+        each partition corresponding to a row of the array 'cluster_runs'
+        provided at input.
+    """
+
+    N_runs = cluster_runs.shape[0]
+
+    hypergraph_adjacency = create_weighted_membership_matrix_extended(cluster_runs[0], clustering_weights[0],
+                                                                      cluster_level_weights[0], alpha[0], internal[0])
+    for i in xrange(1, N_runs):
+        hypergraph_adjacency = scipy.sparse.vstack([hypergraph_adjacency,
+                                                    create_weighted_membership_matrix_extended(cluster_runs[i],
+                                                                                               clustering_weights[i],
+                                                                                               cluster_level_weights[i],
+                                                                                               alpha[i],
+                                                                                               internal[i])],
+                                                   format='csr')
+
+    return hypergraph_adjacency
+
+
 def build_weighted_hypergraph_adjacency_hgpa(cluster_runs, clustering_weights, cluster_level_weights, alpha):
     """Return the adjacency matrix to a hypergraph, in sparse matrix representation.
 
@@ -541,7 +573,8 @@ def cluster_ensembles_HGPAONLY(cluster_runs, hdf5_file_name=None, verbose=False,
 
 
 def cluster_ensembles_CSPAONLY(cluster_runs, hdf5_file_name=None, verbose=False, N_clusters_max=None, weighted=False,
-                               clustering_weights=None, cluster_level_weights=None, alpha=1):
+                               clustering_weights=None, cluster_level_weights=None, alpha=None,
+                               new_formula=False, internal=None, ml=None, cl=None):
     """Conduct CSPA to ensemble clusterings and return the results as an array of shape (n_samples, )
 
     Parameters
@@ -604,13 +637,25 @@ def cluster_ensembles_CSPAONLY(cluster_runs, hdf5_file_name=None, verbose=False,
 
     if not weighted:
         hypergraph_adjacency = build_hypergraph_adjacency(cluster_runs)
+    elif weighted and new_formula and alpha is not None:
+        print("Extended Weighted Ensemble: CSPA")
+        hypergraph_adjacency = build_weighted_hypergraph_adjacency_extended(cluster_runs,
+                                                                            clustering_weights,
+                                                                            cluster_level_weights,
+                                                                            alpha,
+                                                                            internal)
     else:
+        if alpha is None:
+            alpha = 1
         hypergraph_adjacency = build_weighted_hypergraph_adjacency(cluster_runs,
-                                                                   clustering_weights, cluster_level_weights, alpha)
+                                                                   clustering_weights,
+                                                                   cluster_level_weights,
+                                                                   alpha)
     store_hypergraph_adjacency(hypergraph_adjacency, hdf5_file_name)
 
     for i in xrange(len(consensus_functions)):
-        cluster_ensemble.append(consensus_functions[i](hdf5_file_name, cluster_runs, verbose, N_clusters_max))
+        cluster_ensemble.append(consensus_functions[i](hdf5_file_name, cluster_runs, verbose, N_clusters_max,
+                                                       ml=ml, cl=cl))
         score = np.append(score, ceEvalMutual(cluster_runs, cluster_ensemble[i], verbose))
         print("\nINFO: Cluster_Ensembles: cluster_ensembles: "
               "{0} at {1}.".format(function_names[i], score[i]))
@@ -620,6 +665,63 @@ def cluster_ensembles_CSPAONLY(cluster_runs, hdf5_file_name=None, verbose=False,
     os.remove(hdf5_file_name)
 
     return cluster_ensemble[np.argmax(score)]
+
+
+def cluster_ensembles_CSPA_on_matrix(coas_matrix, N_runs, N_clusters_max, hdf5_file_name=None, verbose=False):
+    """Conduct CSPA to ensemble clusterings and return the results as an array of shape (n_samples, )
+
+    Parameters
+    ----------
+    coas_matrix :
+
+    hdf5_file_name : file object or string, optional (default = None)
+        The handle or name of an HDF5 file where any array needed
+        for consensus_clustering and too large to fit into memory
+        is to be stored. Created if not specified at input.
+
+    verbose : Boolean, optional (default = False)
+        Specifies if messages concerning the status of the many functions
+        subsequently called 'cluster_ensembles' will be displayed
+        on the standard output.
+
+    N_clusters_max : int, optional
+        The number of clusters in which to partition the samples into
+        a consensus clustering. This defaults to the highest number of clusters
+        encountered in the sets of independent clusterings on subsamples
+        of the data-set (i.e. the maximum of the entries in "cluster_runs").
+
+    Returns
+    -------
+    cluster_ensemble : array of shape (n_samples,)
+        For the final ensemble clustering, this vector contains the
+        cluster IDs of each sample in the whole data-set.
+
+    Reference
+    ---------
+    A. Strehl and J. Ghosh, "Cluster Ensembles - A Knowledge Reuse Framework
+    for Combining Multiple Partitions".
+    In: Journal of Machine Learning Research, 3, pp. 583-617. 2002
+    """
+
+    if hdf5_file_name is None:
+        hdf5_file_name = './Cluster_Ensembles.h5'
+    fileh = tables.open_file(hdf5_file_name, 'w')
+    fileh.create_group(fileh.root, 'consensus_group')
+    fileh.close()
+
+    if coas_matrix.shape[0] > 10000:
+        print("\nINFO: Cluster_Ensembles: cluster_ensembles: "
+              "due to a rather large number of cells in your data-set, "
+              "using only 'HyperGraph Partitioning Algorithm' (HGPA) "
+              "and 'Meta-CLustering Algorithm' (MCLA) "
+              "as ensemble consensus functions.\n")
+        return
+
+    consensus_label = CSPA_on_matrix(coas_matrix, N_runs, N_clusters_max, hdf5_file_name=hdf5_file_name, verbose=verbose)
+
+    os.remove(hdf5_file_name)
+
+    return consensus_label
 
 
 def ceEvalMutual(cluster_runs, cluster_ensemble=None, verbose=False):
@@ -858,7 +960,43 @@ def checks(similarities, verbose=False):
                 print("\nINFO: Cluster_Ensembles: checks: issue corrected.")
 
 
-def CSPA(hdf5_file_name, cluster_runs, verbose=False, N_clusters_max=None):
+def CSPA_on_matrix(s, N_runs, N_clusters_max, hdf5_file_name=None, verbose=False):
+    print('*****')
+    print("INFO: Cluster_Ensembles: CSPA: consensus clustering using CSPA_ON_MATRIX.")
+
+    if hdf5_file_name is None:
+        hdf5_file_name = './Cluster_Ensembles.h5'
+
+    N_samples = s.shape[0]
+
+    checks(np.divide(s, float(N_runs)), verbose)
+
+    e_sum_before = s.sum()
+    sum_after = 100000000.0
+    scale_factor = sum_after / float(e_sum_before)
+
+    with tables.open_file(hdf5_file_name, 'r+') as fileh:
+        atom = tables.Float32Atom()
+        FILTERS = get_compression_filter(4 * (N_samples ** 2))
+
+        S = fileh.create_carray(fileh.root.consensus_group, 'similarities_CSPA', atom,
+                                (N_samples, N_samples), "Matrix of similarities arising "
+                                                        "in Cluster-based Similarity Partitioning",
+                                filters=FILTERS)
+
+        expr = tables.Expr("s * scale_factor")
+        expr.set_output(S)
+        expr.eval()
+
+        chunks_size = get_chunk_size(N_samples, 3)
+        for i in xrange(0, N_samples, chunks_size):
+            tmp = S[i:min(i + chunks_size, N_samples)]
+            S[i:min(i + chunks_size, N_samples)] = np.rint(tmp)
+
+    return metis(hdf5_file_name, N_clusters_max)
+
+
+def CSPA(hdf5_file_name, cluster_runs, verbose=False, N_clusters_max=None, ml=None, cl=None):
     """Cluster-based Similarity Partitioning Algorithm for a consensus function.
 
     Parameters
@@ -920,6 +1058,16 @@ def CSPA(hdf5_file_name, cluster_runs, verbose=False, N_clusters_max=None):
 
     del hypergraph_adjacency
     gc.collect()
+
+    if ml is not None and cl is not None:
+        min_vv = np.min(s)
+        max_vv = np.max(s)
+        for obj1, obj2 in ml:
+            s[obj1, obj2] = max_vv
+            s[obj2, obj1] = max_vv
+        for obj1, obj2 in cl:
+            s[obj1, obj2] = min_vv
+            s[obj2, obj1] = min_vv
 
     checks(np.divide(s, float(N_runs)), verbose)
 
@@ -1294,6 +1442,48 @@ def create_weighted_membership_matrix(cluster_run, clustering_weight, cluster_we
             indices = np.append(indices, np.where(cluster_run == elt)[0])
             indptr = np.append(indptr, indices.size)
             weight = alpha * clustering_weight + (1 - alpha) * cluster_weights[int(elt)]
+            # cluster-level weighting
+            cluster_data = np.ones(np.where(cluster_run == elt)[0].size, dtype=np.float32) * weight
+            data = np.append(data, cluster_data)
+
+        return scipy.sparse.csr_matrix((data, indices, indptr), shape=(cluster_ids.size, cluster_run.size))
+
+
+def create_weighted_membership_matrix_extended(cluster_run, clustering_weight, cluster_weights, alpha, internal):
+    """
+    weighted version of 'create_membership_matrix'
+
+    Parameters
+    ----------
+    cluster_run : array of shape (n_partitions, n_samples)
+    clustering_weight : weight of cluster_run
+    cluster_weights : weights of each cluster in cluster level
+    alpha : balance factor to control the trade-off between clustering weight and cluster_weights
+
+    Returns
+    -------
+    An adjacnecy matrix in compressed sparse row form.
+    """
+
+    cluster_run = np.asanyarray(cluster_run)
+
+    if reduce(operator.mul, cluster_run.shape, 1) != max(cluster_run.shape):
+        raise ValueError("\nERROR: Cluster_Ensembles: create_membership_matrix: "
+                         "problem in dimensions of the cluster label vector "
+                         "under consideration.")
+    else:
+        cluster_run = cluster_run.reshape(cluster_run.size)
+
+        cluster_ids = np.unique(np.compress(np.isfinite(cluster_run), cluster_run))
+
+        indices = np.empty(0, dtype=np.int32)
+        indptr = np.zeros(1, dtype=np.int32)
+        data = np.empty(0, dtype=int)
+
+        for elt in cluster_ids:
+            indices = np.append(indices, np.where(cluster_run == elt)[0])
+            indptr = np.append(indptr, indices.size)
+            weight = ((1 - alpha[int(elt)]) * clustering_weight + alpha[int(elt)] * cluster_weights[int(elt)]) * internal[int(elt)]
             # cluster-level weighting
             cluster_data = np.ones(np.where(cluster_run == elt)[0].size, dtype=np.float32) * weight
             data = np.append(data, cluster_data)
